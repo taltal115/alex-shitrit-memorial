@@ -50,8 +50,8 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 # Hebrew Date Configuration
 # ⚠️ CRITICAL: Requires family verification!
 # Death occurred on 27 Oct 2020
-# If BEFORE sunset: 10 Cheshvan 5781
-# If AFTER sunset: 11 Cheshvan 5781
+# If BEFORE sunset: 9 Cheshvan 5781
+# If AFTER sunset: 10 Cheshvan 5781
 NEXT_PUBLIC_DEATH_DATE_HEBREW_DAY=PENDING_VERIFICATION
 NEXT_PUBLIC_DEATH_DATE_HEBREW_MONTH=PENDING_VERIFICATION
 NEXT_PUBLIC_DEATH_DATE_HEBREW_YEAR=PENDING_VERIFICATION
@@ -211,8 +211,8 @@ npm run type-check
 - **תאריך לועזי ידוע**: 27 אוקטובר 2020
 - **שעת הפטירה ביחס לשקיעה**: לא אומת
 
-**אם הפטירה הייתה לפני שקיעה**: י' בחשוון תשפ"א  
-**אם הפטירה הייתה אחרי שקיעה**: י"א בחשוון תשפ"א
+**אם הפטירה הייתה לפני שקיעה**: ט' בחשוון תשפ"א (9 Cheshvan 5781)  
+**אם הפטירה הייתה אחרי שקיעה**: י' בחשוון תשפ"א (10 Cheshvan 5781)
 
 ### שימוש ב-Hebcal
 

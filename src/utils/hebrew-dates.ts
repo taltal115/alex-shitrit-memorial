@@ -9,71 +9,61 @@ export function getAzkaraDateForYear(
   hebrewDeathDate: HebrewDate,
   gregorianYear: number
 ): AzkaraDate {
-  // Create Hebrew date object for the original yahrzeit
-  const originalHd = new HDate(
-    hebrewDeathDate.day,
-    hebrewDeathDate.month,
-    hebrewDeathDate.year
-  );
+  // Hebrew year roughly corresponds to Gregorian year + 3760 or 3761
+  // depending on whether we're before or after Rosh Hashanah
+  // We'll try both and pick the one that falls in the target Gregorian year
   
-  // Calculate the Hebrew year for the target Gregorian year
-  // Hebrew year typically starts in September/October
-  const targetHebrewYear = gregorianYear - 1240 + 3760; // Approximate conversion
+  const candidateYears = [gregorianYear + 3760, gregorianYear + 3761];
   
-  // Create the yahrzeit date in the target Hebrew year
-  const targetYahrzeit = new HDate(
-    hebrewDeathDate.day,
-    hebrewDeathDate.month,
-    targetHebrewYear
-  );
-  
-  // Convert to Gregorian date
-  const gregorianDate = targetYahrzeit.greg();
-  
-  // If the calculated date is in the wrong Gregorian year, adjust
-  if (gregorianDate.getFullYear() !== gregorianYear) {
-    const adjustedYear = gregorianDate.getFullYear() < gregorianYear 
-      ? targetHebrewYear + 1 
-      : targetHebrewYear - 1;
-    const adjustedYahrzeit = new HDate(
+  for (const hebrewYear of candidateYears) {
+    const candidate = new HDate(
       hebrewDeathDate.day,
       hebrewDeathDate.month,
-      adjustedYear
+      hebrewYear
     );
-    const adjustedGregorian = adjustedYahrzeit.greg();
     
-    // Calculate days until azkara
-    const today = new Date();
-    const timeDiff = adjustedGregorian.getTime() - today.getTime();
-    const daysUntil = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+    const gregorianDate = candidate.greg();
     
-    return {
-      hebrewDate: {
-        day: adjustedYahrzeit.getDate(),
-        month: adjustedYahrzeit.getMonthName(),
-        year: adjustedYahrzeit.getFullYear(),
-      },
-      gregorianDate: adjustedGregorian,
-      weekday: adjustedGregorian.toLocaleDateString('en-US', { weekday: 'long' }),
-      weekdayHebrew: adjustedYahrzeit.render('he'),
-      daysUntil,
-    };
+    // Check if this falls in our target Gregorian year
+    if (gregorianDate.getFullYear() === gregorianYear) {
+      const today = new Date();
+      const timeDiff = gregorianDate.getTime() - today.getTime();
+      const daysUntil = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
+      
+      return {
+        hebrewDate: {
+          day: candidate.getDate(),
+          month: candidate.getMonthName(),
+          year: candidate.getFullYear(),
+        },
+        gregorianDate,
+        weekday: gregorianDate.toLocaleDateString('en-US', { weekday: 'long' }),
+        weekdayHebrew: candidate.render('he'),
+        daysUntil,
+      };
+    }
   }
   
-  // Calculate days until azkara
+  // Fallback: use the first candidate (shouldn't happen with valid dates)
+  const fallback = new HDate(
+    hebrewDeathDate.day,
+    hebrewDeathDate.month,
+    candidateYears[0]
+  );
+  const gregorianDate = fallback.greg();
   const today = new Date();
   const timeDiff = gregorianDate.getTime() - today.getTime();
   const daysUntil = Math.ceil(timeDiff / (1000 * 60 * 60 * 24));
   
   return {
     hebrewDate: {
-      day: targetYahrzeit.getDate(),
-      month: targetYahrzeit.getMonthName(),
-      year: targetYahrzeit.getFullYear(),
+      day: fallback.getDate(),
+      month: fallback.getMonthName(),
+      year: fallback.getFullYear(),
     },
     gregorianDate,
     weekday: gregorianDate.toLocaleDateString('en-US', { weekday: 'long' }),
-    weekdayHebrew: targetYahrzeit.render('he'),
+    weekdayHebrew: fallback.render('he'),
     daysUntil,
   };
 }

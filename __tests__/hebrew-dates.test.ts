@@ -11,10 +11,12 @@ import type { HebrewDate } from '@/types';
 describe('Hebrew Date Calculations', () => {
   // CRITICAL TEST: Death date was 27 Oct 2020
   // Need to verify if it was before or after sunset to determine Hebrew date
-  // This test uses a PLACEHOLDER date - actual date must be verified by family
+  // Before sunset: 9 Cheshvan 5781
+  // After sunset: 10 Cheshvan 5781
+  // This test uses 9 Cheshvan as PLACEHOLDER - actual date must be verified by family
   
   const PLACEHOLDER_HEBREW_DEATH_DATE: HebrewDate = {
-    day: 10,
+    day: 9,
     month: 'Cheshvan',
     year: 5781,
   };
@@ -24,7 +26,7 @@ describe('Hebrew Date Calculations', () => {
       const azkara = getAzkaraDateForYear(PLACEHOLDER_HEBREW_DEATH_DATE, 2021);
       
       expect(azkara).toBeDefined();
-      expect(azkara.hebrewDate.day).toBe(10);
+      expect(azkara.hebrewDate.day).toBe(9);
       expect(azkara.hebrewDate.month).toBe('Cheshvan');
       expect(azkara.gregorianDate).toBeInstanceOf(Date);
     });
@@ -33,7 +35,7 @@ describe('Hebrew Date Calculations', () => {
       const azkara = getAzkaraDateForYear(PLACEHOLDER_HEBREW_DEATH_DATE, 2022);
       
       expect(azkara).toBeDefined();
-      expect(azkara.hebrewDate.day).toBe(10);
+      expect(azkara.hebrewDate.day).toBe(9);
       expect(azkara.hebrewDate.month).toBe('Cheshvan');
       expect(azkara.gregorianDate.getFullYear()).toBe(2022);
     });
@@ -42,7 +44,7 @@ describe('Hebrew Date Calculations', () => {
       const azkara = getAzkaraDateForYear(PLACEHOLDER_HEBREW_DEATH_DATE, 2023);
       
       expect(azkara).toBeDefined();
-      expect(azkara.hebrewDate.day).toBe(10);
+      expect(azkara.hebrewDate.day).toBe(9);
       expect(azkara.hebrewDate.month).toBe('Cheshvan');
       expect(azkara.gregorianDate.getFullYear()).toBe(2023);
     });
@@ -56,8 +58,8 @@ describe('Hebrew Date Calculations', () => {
       
       // Hebrew leap years affect month calculations
       // The library should handle this automatically
-      expect(azkaraRegular.hebrewDate.day).toBe(10);
-      expect(azkaraLeap.hebrewDate.day).toBe(10);
+      expect(azkaraRegular.hebrewDate.day).toBe(9);
+      expect(azkaraLeap.hebrewDate.day).toBe(9);
     });
 
     it('should include weekday information', () => {
@@ -80,7 +82,7 @@ describe('Hebrew Date Calculations', () => {
       const nextAzkara = getNextAzkaraDate(PLACEHOLDER_HEBREW_DEATH_DATE);
       
       expect(nextAzkara).toBeDefined();
-      expect(nextAzkara.hebrewDate.day).toBe(10);
+      expect(nextAzkara.hebrewDate.day).toBe(9);
       expect(nextAzkara.hebrewDate.month).toBe('Cheshvan');
       
       // Should be in the future
@@ -94,8 +96,8 @@ describe('Hebrew Date Calculations', () => {
       const upcomingDates = getUpcomingAzkaraDates(PLACEHOLDER_HEBREW_DEATH_DATE);
       
       expect(upcomingDates).toHaveLength(2);
-      expect(upcomingDates[0].hebrewDate.day).toBe(10);
-      expect(upcomingDates[1].hebrewDate.day).toBe(10);
+      expect(upcomingDates[0].hebrewDate.day).toBe(9);
+      expect(upcomingDates[1].hebrewDate.day).toBe(9);
       
       // Second date should be one year after first
       const yearDiff = upcomingDates[1].hebrewDate.year - upcomingDates[0].hebrewDate.year;
@@ -111,15 +113,17 @@ describe('Hebrew Date Calculations', () => {
     it('should determine if time is after sunset on Oct 27, 2020', () => {
       const dateOfDeath = new Date('2020-10-27');
       
-      // Test various times
+      // Test various times (sunset in late October Jerusalem is around 5:30 PM)
       const morning = isAfterSunset(dateOfDeath, '10:00', latitude, longitude);
-      const afternoon = isAfterSunset(dateOfDeath, '15:00', latitude, longitude);
+      const earlyAfternoon = isAfterSunset(dateOfDeath, '14:00', latitude, longitude);
       const evening = isAfterSunset(dateOfDeath, '19:00', latitude, longitude);
       
       expect(morning).toBe(false);
-      expect(afternoon).toBe(false);
-      // Evening should be after sunset in late October
-      // (actual sunset time varies, this test documents the logic)
+      expect(earlyAfternoon).toBe(false);
+      expect(evening).toBe(true);
+      
+      // Actual sunset time varies with season and location
+      // This test documents the logic using Hebcal's calculation
     });
 
     it('should handle different times of year', () => {
@@ -207,9 +211,11 @@ describe('Hebrew Date Calculations', () => {
       // If we incorrectly added 12 months, the day and month would be the same
       // But the Gregorian day should differ due to Hebrew calendar differences
       
-      // Both should be Cheshvan 10, but different Gregorian dates
-      expect(azkara2021.hebrewDate.day).toBe(10);
-      expect(azkara2022.hebrewDate.day).toBe(10);
+      // Both should be Cheshvan 9 (our placeholder), but different Gregorian dates
+      expect(azkara2021.hebrewDate.day).toBe(9);
+      expect(azkara2022.hebrewDate.day).toBe(9);
+      expect(azkara2021.hebrewDate.month).toBe('Cheshvan');
+      expect(azkara2022.hebrewDate.month).toBe('Cheshvan');
       
       // The Gregorian dates should NOT be exactly 365 or 366 days apart
       // (they will be close, but Hebrew calendar drift means slight variation)
@@ -230,12 +236,63 @@ describe('Hebrew Date Calculations', () => {
       // - Gregorian death date: October 27, 2020
       // - Time of death relative to sunset: UNVERIFIED
       
-      // If death was BEFORE sunset: Hebrew date is 10 Cheshvan 5781
-      // If death was AFTER sunset: Hebrew date is 11 Cheshvan 5781
+      // If death was BEFORE sunset: Hebrew date is 9 Cheshvan 5781
+      // If death was AFTER sunset: Hebrew date is 10 Cheshvan 5781
       
       // The family MUST confirm which is correct
       
       expect(true).toBe(true); // Placeholder assertion
+    });
+  });
+
+  describe('October 27, 2020 Specific Conversion', () => {
+    it('should correctly convert October 27, 2020 to 9 Cheshvan 5781', () => {
+      // This test verifies the actual Hebrew date for the known Gregorian date
+      const { HDate } = require('@hebcal/core');
+      
+      // October 27, 2020 before sunset
+      const gregorianDate = new Date('2020-10-27');
+      const hebrewDate = new HDate(gregorianDate);
+      
+      expect(hebrewDate.getDate()).toBe(9);
+      expect(hebrewDate.getMonthName()).toBe('Cheshvan');
+      expect(hebrewDate.getFullYear()).toBe(5781);
+    });
+
+    it('should verify that 9 Cheshvan 5781 equals October 27, 2020', () => {
+      // Reverse check: Hebrew to Gregorian
+      const { HDate } = require('@hebcal/core');
+      
+      const hebrewDate = new HDate(9, 'Cheshvan', 5781);
+      const gregorianDate = hebrewDate.greg();
+      
+      expect(gregorianDate.getFullYear()).toBe(2020);
+      expect(gregorianDate.getMonth()).toBe(9); // October (0-indexed)
+      expect(gregorianDate.getDate()).toBe(27);
+    });
+
+    it('should verify that 10 Cheshvan 5781 equals October 28, 2020', () => {
+      // After sunset on Oct 27 = beginning of Oct 28 in Gregorian
+      const { HDate } = require('@hebcal/core');
+      
+      const hebrewDate = new HDate(10, 'Cheshvan', 5781);
+      const gregorianDate = hebrewDate.greg();
+      
+      expect(gregorianDate.getFullYear()).toBe(2020);
+      expect(gregorianDate.getMonth()).toBe(9); // October (0-indexed)
+      expect(gregorianDate.getDate()).toBe(28);
+    });
+
+    it('should verify that 1 Cheshvan 5781 equals October 19, 2020', () => {
+      // Verify the user's reference point
+      const { HDate } = require('@hebcal/core');
+      
+      const hebrewDate = new HDate(1, 'Cheshvan', 5781);
+      const gregorianDate = hebrewDate.greg();
+      
+      expect(gregorianDate.getFullYear()).toBe(2020);
+      expect(gregorianDate.getMonth()).toBe(9); // October (0-indexed)
+      expect(gregorianDate.getDate()).toBe(19);
     });
   });
 });

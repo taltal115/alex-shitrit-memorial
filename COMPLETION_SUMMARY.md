@@ -100,12 +100,12 @@ A complete, production-ready memorial website following the full specification:
 **Hebrew Death Date**:
 - Gregorian: October 27, 2020 (confirmed)
 - Time relative to sunset: **UNVERIFIED**
-- If **before sunset**: 10 Cheshvan 5781
-- If **after sunset**: 11 Cheshvan 5781
+- If **before sunset**: 9 Cheshvan 5781
+- If **after sunset**: 10 Cheshvan 5781
 
 **Action Required**: Family must determine time of death relative to sunset that day and update `.env`:
 ```env
-NEXT_PUBLIC_DEATH_DATE_HEBREW_DAY=10  # or 11
+NEXT_PUBLIC_DEATH_DATE_HEBREW_DAY=9  # or 10 depending on sunset verification
 NEXT_PUBLIC_DEATH_DATE_HEBREW_MONTH=Cheshvan
 NEXT_PUBLIC_DEATH_DATE_HEBREW_YEAR=5781
 ```

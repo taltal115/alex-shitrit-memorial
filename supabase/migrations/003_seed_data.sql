@@ -22,7 +22,7 @@ INSERT INTO memorial (
 
 -- Note: Hebrew death date is intentionally left NULL until verified
 -- Family must confirm whether death occurred before or after sunset on 27 Oct 2020
--- to determine if Hebrew date is 10 Cheshvan 5781 or 11 Cheshvan 5781
+-- to determine if Hebrew date is 9 Cheshvan 5781 (before sunset) or 10 Cheshvan 5781 (after sunset)
 
 -- Insert placeholder prayer sections (NOT VERIFIED - family must provide actual nusach)
 INSERT INTO prayer_section (memorial_id, section_order, title, hebrew_text, notes, is_verified)
