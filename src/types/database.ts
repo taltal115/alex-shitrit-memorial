@@ -21,6 +21,15 @@ export interface Database {
           hebrew_death_date_year: number | null
           gregorian_death_date: string
           death_date_verified: boolean
+          death_time_relative_to_sunset: 'pending' | 'before_sunset' | 'after_sunset'
+          hebrew_date_before_sunset_day: number | null
+          hebrew_date_before_sunset_month: string | null
+          hebrew_date_before_sunset_year: number | null
+          hebrew_date_after_sunset_day: number | null
+          hebrew_date_after_sunset_month: string | null
+          hebrew_date_after_sunset_year: number | null
+          death_date_verified_at: string | null
+          death_date_verified_by: string | null
           portrait_url: string | null
           quote: string | null
           intro_text: string | null

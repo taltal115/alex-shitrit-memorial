@@ -251,7 +251,22 @@ const png = await generateQRCodePNG('https://site.com/prayers');
 
 ## 📤 Deployment
 
-### Vercel (מומלץ)
+### Firebase App Hosting (מומלץ)
+
+הפרויקט מוגדר לפריסה ב-Firebase App Hosting עם Next.js SSR.
+
+**ראה [FIREBASE_DEPLOYMENT.md](./FIREBASE_DEPLOYMENT.md) להוראות שלב-אחר-שלב מלאות.**
+
+**סיכום מהיר**:
+1. צור פרויקט Firebase (דרישה: Blaze plan)
+2. הגדר secrets ב-Cloud Secret Manager
+3. חבר repository מ-GitHub
+4. הפעל deployment אוטומטי
+5. הוסף custom domain
+
+**עלויות צפויות**: $25-60/חודש (כולל Supabase)
+
+### Vercel (אלטרנטיבה)
 
 ```bash
 # התקן Vercel CLI
