@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Minus, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { sephardiPrayerSections } from '@/data/sephardi-prayers';
 import { createClient } from '@/lib/supabase/client';
+import { isSupabaseConfigured } from '@/lib/supabase/env';
 
 interface PrayerSection {
   id: string;
@@ -20,12 +22,17 @@ interface PrayerSection {
 export default function PrayersContent() {
   const [prayerSections, setPrayerSections] = useState<PrayerSection[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [currentSection, setCurrentSection] = useState(0);
   const [textSize, setTextSize] = useState(20);
 
   useEffect(() => {
     async function fetchPrayerSections() {
+      if (!isSupabaseConfigured()) {
+        setPrayerSections(sephardiPrayerSections);
+        setLoading(false);
+        return;
+      }
+
       try {
         const supabase = createClient();
         const { data, error } = await supabase
@@ -33,18 +40,16 @@ export default function PrayersContent() {
           .select('*')
           .order('section_order', { ascending: true });
 
-        if (error) {
-          console.error('Error fetching prayer sections:', error);
-          setError('שגיאה בטעינת תפילות');
+        if (error || !data || data.length === 0) {
+          if (error) console.error('Error fetching prayer sections:', error);
+          setPrayerSections(sephardiPrayerSections);
           return;
         }
 
-        if (data) {
-          setPrayerSections(data as PrayerSection[]);
-        }
+        setPrayerSections(data as PrayerSection[]);
       } catch (err) {
         console.error('Error:', err);
-        setError('שגיאה בטעינת תפילות');
+        setPrayerSections(sephardiPrayerSections);
       } finally {
         setLoading(false);
       }
@@ -131,12 +136,12 @@ export default function PrayersContent() {
     );
   }
 
-  if (error || prayerSections.length === 0) {
+  if (prayerSections.length === 0) {
     return (
       <main className="min-h-screen bg-background">
         <section className="py-12">
           <div className="container mx-auto px-4 text-center">
-            <p className="text-xl text-red-600">{error || 'לא נמצאו תפילות'}</p>
+            <p className="text-xl text-red-600">לא נמצאו תפילות</p>
           </div>
         </section>
       </main>

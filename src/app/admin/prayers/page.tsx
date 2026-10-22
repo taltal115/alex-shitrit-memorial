@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import { sephardiPrayerSections } from '@/data/sephardi-prayers';
 import { createClient } from '@/lib/supabase/client';
+import { isSupabaseConfigured } from '@/lib/supabase/env';
 import { CheckCircle, XCircle, AlertCircle, Edit, ExternalLink } from 'lucide-react';
 import type { Database } from '@/types/database';
 
@@ -24,14 +26,21 @@ interface PrayerSection {
 export default function PrayersAdminPage() {
   const [prayerSections, setPrayerSections] = useState<PrayerSection[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [usingLocalPrayers, setUsingLocalPrayers] = useState(false);
 
   useEffect(() => {
     fetchPrayerSections();
   }, []);
 
   async function fetchPrayerSections() {
+    if (!isSupabaseConfigured()) {
+      setPrayerSections(sephardiPrayerSections);
+      setUsingLocalPrayers(true);
+      setLoading(false);
+      return;
+    }
+
     try {
       const supabase = createClient();
       const { data, error } = await supabase
@@ -39,18 +48,19 @@ export default function PrayersAdminPage() {
         .select('*')
         .order('section_order', { ascending: true });
 
-      if (error) {
-        console.error('Error fetching prayer sections:', error);
-        setError('שגיאה בטעינת תפילות');
+      if (error || !data || data.length === 0) {
+        if (error) console.error('Error fetching prayer sections:', error);
+        setPrayerSections(sephardiPrayerSections);
+        setUsingLocalPrayers(true);
         return;
       }
 
-      if (data) {
-        setPrayerSections(data as PrayerSection[]);
-      }
+      setUsingLocalPrayers(false);
+      setPrayerSections(data as PrayerSection[]);
     } catch (err) {
       console.error('Error:', err);
-      setError('שגיאה בטעינת תפילות');
+      setPrayerSections(sephardiPrayerSections);
+      setUsingLocalPrayers(true);
     } finally {
       setLoading(false);
     }
@@ -172,9 +182,9 @@ export default function PrayersAdminPage() {
         <section className="py-8">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto space-y-6">
-              {error && (
-                <div className="p-4 bg-red-50 border-2 border-red-200 rounded-lg text-red-800">
-                  {error}
+              {usingLocalPrayers && (
+                <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-lg text-amber-900">
+                  מוצגים נוסחי התפילה המקומיים. שמירת סטטוס אימות תפעל אחרי חיבור Supabase.
                 </div>
               )}
 
@@ -226,7 +236,7 @@ export default function PrayersAdminPage() {
                   <div className="flex gap-3 border-t pt-4">
                     <button
                       onClick={() => updateVerificationStatus(section.id, 'verified')}
-                      disabled={updating === section.id || section.verification_status === 'verified'}
+                      disabled={usingLocalPrayers || updating === section.id || section.verification_status === 'verified'}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <CheckCircle size={18} />
@@ -235,7 +245,7 @@ export default function PrayersAdminPage() {
                     
                     <button
                       onClick={() => updateVerificationStatus(section.id, 'pending_family_verification')}
-                      disabled={updating === section.id || section.verification_status === 'pending_family_verification'}
+                      disabled={usingLocalPrayers || updating === section.id || section.verification_status === 'pending_family_verification'}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <AlertCircle size={18} />
@@ -244,7 +254,7 @@ export default function PrayersAdminPage() {
 
                     <button
                       onClick={() => updateVerificationStatus(section.id, 'rejected')}
-                      disabled={updating === section.id || section.verification_status === 'rejected'}
+                      disabled={usingLocalPrayers || updating === section.id || section.verification_status === 'rejected'}
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <XCircle size={18} />
