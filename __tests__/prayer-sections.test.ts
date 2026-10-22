@@ -93,12 +93,12 @@ describe('Prayer Sections Seed Data', () => {
 
   describe('Name Placeholder in Hashkava', () => {
     it('should have [[NAME: ...]] placeholder in hashkava section', () => {
-      expect(seedFileContent).toContain('[[NAME: אלכס יחיה בן פורטונה]]');
+      expect(seedFileContent).toContain('[[NAME: אלכס יחיא בן פורטונה]]');
     });
 
     it('should extract name from placeholder correctly', () => {
       // The actual seed has the full text, just check it contains the name
-      expect(seedFileContent).toContain('אלכס יחיה בן פורטונה');
+      expect(seedFileContent).toContain('אלכס יחיא בן פורטונה');
     });
   });
 
@@ -140,11 +140,11 @@ describe('Letter Heading Detection', () => {
 
 describe('Name Placeholder Detection', () => {
   it('should identify name placeholders in hashkava', () => {
-    const verseWithName = 'שֶׁל (פב"פ) [[NAME: אלכס יחיה בן פורטונה]], רוּחַ ה\' תְּנִיחֶנּוּ';
+    const verseWithName = 'שֶׁל (פב"פ) [[NAME: אלכס יחיא בן פורטונה]], רוּחַ ה\' תְּנִיחֶנּוּ';
     const match = verseWithName.match(/\[\[NAME:\s*(.+?)\]\]/);
     
     expect(match).not.toBeNull();
-    expect(match![1]).toBe('אלכס יחיה בן פורטונה');
+    expect(match![1]).toBe('אלכס יחיא בן פורטונה');
   });
 
   it('should not match regular text', () => {
