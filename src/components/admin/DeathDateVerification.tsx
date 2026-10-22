@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle, Calendar } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 interface MemorialData {
   id: string;
@@ -30,9 +31,13 @@ export default function DeathDateVerification() {
 
   const fetchMemorialData = async () => {
     try {
-      const response = await fetch('/api/memorial/death-date');
-      if (!response.ok) throw new Error('Failed to fetch memorial data');
-      const data = await response.json();
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('memorial')
+        .select('*')
+        .single();
+
+      if (error) throw error;
       setMemorial(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
@@ -49,9 +54,20 @@ export default function DeathDateVerification() {
     setSuccess(false);
 
     try {
-      const response = await fetch('/api/memorial/death-date', {
+      const supabase = createClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const response = await fetch(`${supabaseUrl}/functions/v1/verify-death-date`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({
           death_time_relative_to_sunset: choice,
           hebrew_date_before_sunset_day: memorial.hebrew_date_before_sunset_day,

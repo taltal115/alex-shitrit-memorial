@@ -1,15 +1,31 @@
-# Firebase App Hosting Deployment Guide
+# Firebase Hosting Deployment Guide
 
-Complete step-by-step guide for deploying the Alex Shitrit Memorial Website to Firebase App Hosting.
+Complete step-by-step guide for deploying the Alex Shitrit Memorial Website to Firebase Hosting as a static site.
+
+---
+
+## Architecture Overview
+
+This project uses:
+- **Firebase Hosting** (Spark Plan - FREE): Static HTML/CSS/JS hosting
+- **Supabase**: Database, authentication, storage, and Edge Functions
+- **Next.js Static Export**: Pre-rendered static HTML pages
+
+**Key Benefits**:
+- ✅ **Free hosting** (only pay for domain)
+- ✅ **Fast global CDN**
+- ✅ **Auto SSL certificates**
+- ✅ **Zero maintenance**
+- ✅ **No server costs**
 
 ---
 
 ## Prerequisites
 
 - Google account with Firebase access
-- GitHub repository access
 - Supabase project already set up (see main README)
 - Firebase CLI installed: `npm install -g firebase-tools`
+- Domain name (optional but recommended)
 
 ---
 
@@ -21,171 +37,138 @@ Complete step-by-step guide for deploying the Alex Shitrit Memorial Website to F
 4. Disable Google Analytics (optional for this project)
 5. Click **Create Project**
 
----
-
-## Step 2: Upgrade to Blaze Plan
-
-**REQUIRED**: Firebase App Hosting requires the Blaze (pay-as-you-go) plan.
-
-1. In Firebase Console, click **Upgrade** in the left sidebar
-2. Select **Blaze Plan**
-3. Add payment method (credit card required)
-4. Set a budget alert (recommended: $50/month)
-
-### Expected Costs
-
-**Firebase App Hosting**:
-- First 2,000,000 invocations/month: FREE
-- After that: $0.40 per 1 million invocations
-- Minimum instances (0): No idle cost when scaled to zero
-- Storage: ~$0.026/GB/month
-
-**Typical Memorial Site Costs**:
-- **Low traffic** (few hundred visitors/month): $0-5/month
-- **Medium traffic** (thousands of visitors/month): $10-30/month
-- **High traffic** (tens of thousands): $50-100/month
-
-**Combined with Supabase**:
-- Supabase Free: $0/month (500MB DB, 1GB storage)
-- Supabase Pro: $25/month (8GB DB, 100GB storage)
-
-**Total Expected**: $25-60/month for moderate usage
+**Note**: Stay on the **Spark Plan (FREE)** - no upgrade needed!
 
 ---
 
-## Step 3: Update Firebase Configuration
+## Step 2: Configure Environment Variables
 
-### 3.1 Update `.firebaserc`
+### 2.1 Update `.env.local`
+
+```env
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+
+# Site Configuration
+NEXT_PUBLIC_SITE_URL=https://alexshitrit.com  # Your custom domain
+
+# Hebrew Date Configuration (set via admin UI after first verification)
+NEXT_PUBLIC_DEATH_DATE_HEBREW_DAY=9
+NEXT_PUBLIC_DEATH_DATE_HEBREW_MONTH=Cheshvan
+NEXT_PUBLIC_DEATH_DATE_HEBREW_YEAR=5781
+
+# Cemetery Location (for halachic times calculation)
+NEXT_PUBLIC_CEMETERY_LATITUDE=31.7683
+NEXT_PUBLIC_CEMETERY_LONGITUDE=35.2137
+NEXT_PUBLIC_CEMETERY_TIMEZONE=Asia/Jerusalem
+```
+
+**Important**: All environment variables must be `NEXT_PUBLIC_*` for static export.
+
+---
+
+## Step 3: Deploy Supabase Edge Function
+
+The death-date verification functionality requires a server-side function:
+
+### 3.1 Install Supabase CLI
 
 ```bash
-# Edit .firebaserc
-{
-  "projects": {
-    "default": "alex-shitrit-memorial"  # Your Firebase project ID
-  }
-}
+npm install -g supabase
 ```
 
-### 3.2 Review `apphosting.yaml`
-
-The `apphosting.yaml` is already configured. You'll add secrets in the next step.
-
----
-
-## Step 4: Set Up Cloud Secret Manager
-
-Firebase App Hosting uses Google Cloud Secret Manager for sensitive values.
-
-### 4.1 Enable Secret Manager API
-
-1. Go to [Cloud Console](https://console.cloud.google.com/)
-2. Select your Firebase project
-3. Navigate to **APIs & Services > Library**
-4. Search for "Secret Manager API"
-5. Click **Enable**
-
-### 4.2 Create Secrets
-
-Create three secrets for Supabase:
+### 3.2 Link Project
 
 ```bash
-# Install gcloud CLI if needed
-# https://cloud.google.com/sdk/docs/install
-
-# Authenticate
-gcloud auth login
-
-# Set project
-gcloud config set project alex-shitrit-memorial
-
-# Create SUPABASE_URL secret
-echo -n "https://your-project.supabase.co" | \
-  gcloud secrets create SUPABASE_URL --data-file=-
-
-# Create SUPABASE_ANON_KEY secret
-echo -n "your-anon-key-here" | \
-  gcloud secrets create SUPABASE_ANON_KEY --data-file=-
-
-# Create SUPABASE_SERVICE_ROLE_KEY secret
-echo -n "your-service-role-key-here" | \
-  gcloud secrets create SUPABASE_SERVICE_ROLE_KEY --data-file=-
+supabase login
+supabase link --project-ref your-project-ref
 ```
 
-**Alternative**: Use Cloud Console UI:
-1. Go to [Secret Manager](https://console.cloud.google.com/security/secret-manager)
-2. Click **Create Secret**
-3. Name: `SUPABASE_URL`, Value: your Supabase URL
-4. Repeat for `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`
-
-### 4.3 Grant Access to App Hosting
+### 3.3 Deploy Edge Function
 
 ```bash
-# Get the App Hosting service account email
-# Format: firebase-app-hosting-compute@YOUR_PROJECT_ID.iam.gserviceaccount.com
-
-# Grant access to each secret
-gcloud secrets add-iam-policy-binding SUPABASE_URL \
-  --member="serviceAccount:firebase-app-hosting-compute@alex-shitrit-memorial.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding SUPABASE_ANON_KEY \
-  --member="serviceAccount:firebase-app-hosting-compute@alex-shitrit-memorial.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding SUPABASE_SERVICE_ROLE_KEY \
-  --member="serviceAccount:firebase-app-hosting-compute@alex-shitrit-memorial.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
+supabase functions deploy verify-death-date
 ```
 
----
+### 3.4 Set Environment Variables
 
-## Step 5: Connect GitHub Repository
-
-### 5.1 Enable App Hosting
-
-1. In Firebase Console, go to **App Hosting** (left sidebar)
-2. Click **Get Started**
-3. Click **Connect GitHub**
-4. Authorize Firebase to access your GitHub account
-5. Select repository: `taltal115/alex-shitrit-memorial`
-6. Select branch: `main` (or your default branch)
-7. Click **Next**
-
-### 5.2 Configure Build
-
-1. Root directory: `/` (leave default)
-2. Build command: `npm run build` (auto-detected)
-3. Output directory: `.next` (auto-detected)
-4. Click **Next**
-
-### 5.3 Review and Deploy
-
-1. Review configuration
-2. Click **Deploy**
-3. Wait for initial deployment (5-10 minutes)
+In Supabase Dashboard → **Settings** → **Functions**:
+- No additional env vars needed (uses project URL and keys automatically)
 
 ---
 
-## Step 6: Update Site URL
+## Step 4: Build Static Site
 
-After deployment completes:
+### 4.1 Install Dependencies
 
-1. Note the Firebase-provided URL: `https://alex-shitrit-memorial-XXXXX.web.app`
-2. Update `apphosting.yaml`:
-
-```yaml
-env:
-  - variable: NEXT_PUBLIC_SITE_URL
-    value: https://alex-shitrit-memorial-XXXXX.web.app
+```bash
+npm install
 ```
 
-3. Commit and push to trigger redeployment
+### 4.2 Run Tests
+
+```bash
+npm test
+npm run lint
+```
+
+### 4.3 Build for Production
+
+```bash
+npm run build
+```
+
+This creates an `out/` directory with static HTML files.
+
+### 4.4 Test Locally
+
+```bash
+npx serve out
+```
+
+Open `http://localhost:3000` and verify:
+- ✅ Home page loads
+- ✅ `/prayers` page displays correctly
+- ✅ `/admin/prayers` requires auth
+- ✅ Mobile 375px width works
 
 ---
 
-## Step 7: Add Custom Domain
+## Step 5: Deploy to Firebase Hosting
 
-### 7.1 Purchase Domain
+### 5.1 Login to Firebase
+
+```bash
+firebase login
+```
+
+### 5.2 Initialize Project
+
+```bash
+firebase init hosting
+```
+
+Select:
+- Use an existing project: `alex-shitrit-memorial`
+- Public directory: `out`
+- Configure as single-page app: **No**
+- Set up automatic builds with GitHub: **No** (we'll deploy manually)
+- Overwrite `out/index.html`: **No**
+
+### 5.3 Deploy
+
+```bash
+firebase deploy --only hosting
+```
+
+You'll get a URL like: `https://alex-shitrit-memorial.web.app`
+
+---
+
+## Step 6: Add Custom Domain
+
+### 6.1 Purchase Domain
 
 Purchase a domain like `alexshitrit.com` from:
 - Google Domains
@@ -195,117 +178,185 @@ Purchase a domain like `alexshitrit.com` from:
 
 **CRITICAL**: The `/prayers` URL must remain stable for the QR code!
 
-### 7.2 Add Domain to Firebase
+### 6.2 Add Domain to Firebase
 
 1. In Firebase Console → **Hosting**
 2. Click **Add custom domain**
 3. Enter domain: `alexshitrit.com`
 4. Follow DNS verification steps:
    - Add TXT record to verify ownership
-   - Add A records to point to Firebase
+   - Add A records to point to Firebase:
+     ```
+     A     @     151.101.1.195
+     A     @     151.101.65.195
+     ```
    - Wait for DNS propagation (up to 48 hours, usually < 1 hour)
 
-### 7.3 Add WWW Subdomain (Optional)
+### 6.3 Add WWW Subdomain (Optional)
 
 1. Click **Add custom domain** again
 2. Enter: `www.alexshitrit.com`
 3. Choose: Redirect to `alexshitrit.com`
 
-### 7.4 Update Site URL
+### 6.4 Update Site URL
 
 After domain is active:
 
-```yaml
-env:
-  - variable: NEXT_PUBLIC_SITE_URL
-    value: https://alexshitrit.com
-```
+1. Update `.env.local`:
+   ```env
+   NEXT_PUBLIC_SITE_URL=https://alexshitrit.com
+   ```
 
-Commit and push to redeploy.
+2. Rebuild and redeploy:
+   ```bash
+   npm run build
+   firebase deploy --only hosting
+   ```
 
 ---
 
-## Step 8: Ensure QR Code Stability
+## Step 7: Generate QR Code
 
 **CRITICAL**: The `/prayers` page must remain accessible at a stable URL.
 
-### Option A: Custom Domain (Recommended)
+### 7.1 Stable QR URL
 
 Once custom domain is set up:
 - QR URL: `https://alexshitrit.com/prayers`
-- This URL will remain stable even if you change hosting
 
-### Option B: Firebase Default Domain
+### 7.2 Generate QR Code
 
-- QR URL: `https://alex-shitrit-memorial-XXXXX.web.app/prayers`
-- Less ideal (longer URL, Firebase-specific)
+Option A: Use admin interface (when implemented)
 
-### Update QR Code
+Option B: Use online tool:
+1. Go to [qr-code-generator.com](https://www.qr-code-generator.com/)
+2. Enter URL: `https://alexshitrit.com/prayers`
+3. Download high-res PNG (300+ DPI for printing)
 
-1. Go to admin area
-2. Generate new QR code with stable URL
-3. Download high-res PNG
-4. Print/engrave new QR code if needed
+### 7.3 Test QR Code
+
+1. Print or display QR code
+2. Scan with phone
+3. Verify `/prayers` page loads correctly
+4. Test text size controls work
 
 ---
 
-## Step 9: Set Up Automatic Deployments
+## Step 8: Ongoing Deployment Workflow
 
-Firebase App Hosting auto-deploys when you push to the connected branch.
-
-### 9.1 Configure Branch
-
-Main branch is already configured. For preview deployments:
-
-1. In Firebase Console → **App Hosting**
-2. Click **Settings**
-3. Enable **Preview channels** for pull requests
-4. Every PR will get a unique preview URL
-
-### 9.2 Deployment Workflow
+### 8.1 Make Changes
 
 ```bash
-# Make changes locally
-git checkout -b my-feature-branch
-# ... make changes ...
-git add .
-git commit -m "feat: my feature"
-git push origin my-feature-branch
+# Create feature branch
+git checkout -b my-feature
 
-# Create PR → Firebase creates preview deployment
-# Review → Merge → Auto-deploys to production
+# Make changes
+# ... edit files ...
+
+# Test locally
+npm test
+npm run dev
+
+# Build
+npm run build
+npx serve out  # Test production build
+```
+
+### 8.2 Deploy to Production
+
+```bash
+# Deploy to Firebase
+firebase deploy --only hosting
+
+# Or with preview channel first
+firebase hosting:channel:deploy preview-feature
+# Review at: https://alex-shitrit-memorial--preview-feature-XXXXX.web.app
+# Then deploy to main if OK:
+firebase deploy --only hosting
 ```
 
 ---
 
-## Step 10: Monitoring and Logs
+## Costs
 
-### 10.1 View Deployments
+### Firebase Hosting (Spark Plan - FREE)
 
-Firebase Console → **App Hosting** → **Deployments**
+- **Storage**: 10GB (more than enough)
+- **Bandwidth**: 360MB/day (~10GB/month)
+- **Custom domain**: FREE
+- **SSL certificate**: FREE, auto-renewed
 
-### 10.2 View Logs
+**Expected usage for memorial site**:
+- Storage: ~100MB (with images)
+- Bandwidth: 1-5GB/month (unless viral)
 
-```bash
-# Install Firebase CLI
-npm install -g firebase-tools
+**Cost**: **$0/month** ✅
 
-# Login
-firebase login
+### Supabase (Free Tier)
 
-# View logs
-firebase apphosting:logs --project alex-shitrit-memorial
-```
+- **Database**: 500MB
+- **Storage**: 1GB
+- **Bandwidth**: 2GB/month
+- **Auth**: Unlimited users
+- **Edge Functions**: 500K invocations/month
 
-Or in Cloud Console → **Cloud Run** → Select service → **Logs**
+**Expected usage**:
+- Database: ~50MB
+- Storage: ~500MB (memorial images)
+- Bandwidth: 1-2GB/month
+- Edge Functions: <1000 invocations/month
 
-### 10.3 Set Up Alerts
+**Cost**: **$0/month** (within free tier) ✅
 
-1. Cloud Console → **Monitoring** → **Alerting**
-2. Create alerts for:
-   - High error rate
-   - High latency
-   - Budget exceeded
+**If you exceed free tier**:
+- Supabase Pro: $25/month (8GB DB, 100GB storage, 50GB bandwidth)
+
+### Domain
+
+- **Purchase**: $10-30/year (one-time)
+- **Renewal**: $10-30/year (annual)
+
+### Total Expected Cost
+
+- **Monthly**: **$0**
+- **Annual**: **$10-30** (domain only)
+
+---
+
+## Security Checklist
+
+- [x] All sensitive data in Supabase (not in static files)
+- [x] RLS policies enforce all permissions
+- [x] Auth handled by Supabase (not client-side only)
+- [x] Admin verification uses RLS + Edge Function
+- [x] HTTPS enforced (Firebase auto-redirects)
+- [x] No secrets in client code (all `NEXT_PUBLIC_*` vars are safe to expose)
+- [x] Edge Function validates auth before updates
+
+---
+
+## Deployment Checklist
+
+- [ ] Firebase project created (Spark plan - FREE)
+- [ ] Supabase Edge Function deployed
+- [ ] Environment variables configured
+- [ ] Static build successful (`npm run build`)
+- [ ] Initial deployment to Firebase Hosting
+- [ ] Custom domain added and verified
+- [ ] SSL certificate active (auto)
+- [ ] QR code generated with stable URL
+- [ ] Test all pages:
+  - [ ] Home page
+  - [ ] `/prayers` (public)
+  - [ ] `/admin/prayers` (requires auth)
+  - [ ] `/life-story`
+  - [ ] `/gallery`
+  - [ ] `/memories`
+  - [ ] `/legacy`
+- [ ] Verify mobile 375px width
+- [ ] Verify azkara date calculation
+- [ ] Test auth flow (Google + Email)
+- [ ] Test prayer section admin workflow
 
 ---
 
@@ -313,25 +364,41 @@ Or in Cloud Console → **Cloud Run** → Select service → **Logs**
 
 ### Build Fails
 
-Check build logs in Firebase Console:
-1. **App Hosting** → **Deployments** → Click failed deployment
-2. Review error messages
-3. Common issues:
-   - Missing environment variables
-   - TypeScript errors
-   - Missing dependencies
+```bash
+# Check TypeScript errors
+npm run type-check
 
-### Secrets Not Working
+# Check for server-side code (not allowed in static export)
+# Look for: getServerSideProps, API routes, server components
+```
+
+### Page Not Found (404)
+
+Firebase Hosting serves exact file paths. For Next.js:
+- `/` → `index.html` ✅
+- `/prayers` → `prayers.html` ✅
+- `/prayers/` → `prayers/index.html` ✅
+
+Check `firebase.json` `cleanUrls` and `trailingSlash` settings.
+
+### Environment Variables Not Working
+
+In static export, all vars must be `NEXT_PUBLIC_*` and baked in at build time:
 
 ```bash
-# Verify secret exists
-gcloud secrets list
+# Rebuild to pick up new env vars
+npm run build
+firebase deploy --only hosting
+```
 
-# Check secret version
-gcloud secrets versions access latest --secret="SUPABASE_URL"
+### Edge Function Not Working
 
-# Verify IAM permissions
-gcloud secrets get-iam-policy SUPABASE_URL
+```bash
+# Check logs
+supabase functions logs verify-death-date
+
+# Test locally
+supabase functions serve verify-death-date
 ```
 
 ### Custom Domain Not Working
@@ -345,97 +412,143 @@ gcloud secrets get-iam-policy SUPABASE_URL
 3. DNS propagation can take 24-48 hours
 4. Clear browser cache
 
-### High Costs
+---
 
-1. Check Cloud Console → **Billing** → **Reports**
-2. Identify cost drivers:
-   - Invocations (should be low for memorial site)
-   - Bandwidth (optimize images)
-   - Minimum instances (keep at 0)
-3. Set budget alerts
+## Monitoring
+
+### Firebase Hosting
+
+Firebase Console → **Hosting** → **Usage**:
+- Bandwidth usage
+- Storage usage
+- Request count
+
+### Supabase
+
+Supabase Dashboard → **Reports**:
+- Database size
+- Storage usage
+- Bandwidth
+- Edge Function invocations
+
+Set up alerts if approaching limits.
 
 ---
 
-## Alternative: Keep Backend on Supabase
+## Backup Strategy
 
-This project uses **Supabase** for backend (database, auth, storage).
+### 1. Database Backup
 
-### Why Supabase?
+```bash
+# Manual backup via Supabase CLI
+supabase db dump > backup-$(date +%Y%m%d).sql
+```
 
-✅ **Better for this use case**:
-- Postgres with full SQL
-- Real-time updates
-- Built-in Auth with Google OAuth
-- Storage with automatic image optimization
-- Row Level Security
-- Generous free tier
+Or in Supabase Dashboard → **Database** → **Backups** (Pro plan)
 
-### Alternative: Firebase Backend
+### 2. Storage Backup
 
-If you want to use Firebase for backend:
+Download media assets from Supabase Storage dashboard.
 
-**Pros**:
-- Single vendor (simplicity)
-- Integrated with Firebase Auth
-- Firestore real-time updates
+### 3. Code Backup
 
-**Cons**:
-- NoSQL (less flexible than SQL for relational data)
-- More expensive at scale
-- No built-in storage optimization
-- Migration effort required
+GitHub repository is the source of truth:
+```bash
+git push origin main
+```
 
-**Recommendation**: **Keep Supabase** unless you have a strong reason to migrate.
+### 4. Automate Backups
+
+Create a cron job or GitHub Action to:
+- Export database monthly
+- Download storage bucket monthly
+- Store in Google Drive or S3
 
 ---
 
-## Cost Optimization Tips
+## Performance Tips
 
-1. **Keep minInstances at 0** - Scale to zero when idle
-2. **Optimize images** - Use Next.js Image optimization
-3. **Cache aggressively** - Static pages cached at edge
-4. **Monitor usage** - Set up budget alerts
-5. **Use preview channels** - Test before deploying to prod
+### 1. Image Optimization
+
+Already handled by Next.js Image component (unoptimized for static export, but properly sized).
+
+### 2. Caching
+
+Configured in `firebase.json`:
+- Static assets (JS, CSS, images): 1 year cache
+- HTML pages: No cache (fresh on every visit)
+- `/prayers` page: 1 hour cache
+
+### 3. Lazy Loading
+
+Images already lazy-load via Next.js Image.
+
+### 4. Minimize Bundle Size
+
+```bash
+# Analyze bundle
+npm run build
+
+# Check .next/analyze/ for bundle report
+```
 
 ---
 
-## Security Checklist
+## Advanced: CI/CD with GitHub Actions
 
-- [x] Secrets stored in Cloud Secret Manager (not in code)
-- [x] Service account permissions restricted
-- [x] Custom domain with SSL (auto-configured)
-- [x] Supabase RLS policies active
-- [x] Environment variables not exposed client-side
-- [x] Budget alerts configured
+Create `.github/workflows/deploy.yml`:
 
----
+```yaml
+name: Deploy to Firebase Hosting
 
-## Deployment Checklist
+on:
+  push:
+    branches: [ main ]
 
-- [ ] Firebase project created (Blaze plan)
-- [ ] Secrets created in Secret Manager
-- [ ] IAM permissions granted
-- [ ] GitHub repository connected
-- [ ] Initial deployment successful
-- [ ] Site URL updated in apphosting.yaml
-- [ ] Custom domain added and verified
-- [ ] QR code regenerated with stable URL
-- [ ] Monitoring and alerts configured
-- [ ] Test all pages (especially /prayers)
-- [ ] Verify azkara date calculation
-- [ ] Test auth flow (Google + Email)
-- [ ] Test admin area
-- [ ] Test content moderation workflow
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run tests
+        run: npm test
+      
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SITE_URL: https://alexshitrit.com
+      
+      - name: Deploy to Firebase
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          channelId: live
+          projectId: alex-shitrit-memorial
+```
+
+Add secrets in GitHub repo → **Settings** → **Secrets and variables** → **Actions**.
 
 ---
 
 ## Support
 
-- [Firebase App Hosting Docs](https://firebase.google.com/docs/app-hosting)
-- [Next.js on Firebase](https://firebase.google.com/docs/hosting/frameworks/nextjs)
-- [Cloud Secret Manager](https://cloud.google.com/secret-manager/docs)
+- [Firebase Hosting Docs](https://firebase.google.com/docs/hosting)
+- [Next.js Static Export](https://nextjs.org/docs/app/building-your-application/deploying/static-exports)
+- [Supabase Edge Functions](https://supabase.com/docs/guides/functions)
 - [Firebase Pricing](https://firebase.google.com/pricing)
 
 ---
 
-**Status**: Ready for deployment once Supabase is configured.
+**Status**: Ready for deployment. Total running cost: **$0/month** (+ domain).

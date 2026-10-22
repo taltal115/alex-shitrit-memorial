@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Plus, Minus, Calendar, Clock, AlertCircle } 
 import { sephardiPrayerSections } from '@/data/sephardi-prayers';
 import { createClient } from '@/lib/supabase/client';
 import { isSupabaseConfigured } from '@/lib/supabase/env';
+import { SHOW_PENDING_SECTIONS_PUBLICLY } from '@/config/prayers';
 
 interface PrayerSection {
   id: string;
@@ -22,6 +23,7 @@ interface PrayerSection {
 export default function PrayersContent() {
   const [prayerSections, setPrayerSections] = useState<PrayerSection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentSection, setCurrentSection] = useState(0);
   const [textSize, setTextSize] = useState(20);
 
@@ -35,21 +37,33 @@ export default function PrayersContent() {
 
       try {
         const supabase = createClient();
-        const { data, error } = await supabase
+        
+        // Build query based on visibility config
+        let query = supabase
           .from('prayer_section')
-          .select('*')
-          .order('section_order', { ascending: true });
+          .select('*');
+        
+        // Filter based on config: only verified, or verified + pending (never rejected)
+        if (SHOW_PENDING_SECTIONS_PUBLICLY) {
+          query = query.neq('verification_status', 'rejected');
+        } else {
+          query = query.eq('is_verified', true);
+        }
+        
+        const { data, error: fetchError } = await query.order('section_order', { ascending: true });
 
-        if (error || !data || data.length === 0) {
-          if (error) console.error('Error fetching prayer sections:', error);
-          setPrayerSections(sephardiPrayerSections);
+        if (fetchError) {
+          console.error('Error fetching prayer sections:', fetchError);
+          setError('שגיאה בטעינת תפילות');
           return;
         }
 
-        setPrayerSections(data as PrayerSection[]);
+        if (data) {
+          setPrayerSections(data as PrayerSection[]);
+        }
       } catch (err) {
         console.error('Error:', err);
-        setPrayerSections(sephardiPrayerSections);
+        setError('שגיאה בטעינת תפילות');
       } finally {
         setLoading(false);
       }
@@ -136,12 +150,34 @@ export default function PrayersContent() {
     );
   }
 
-  if (prayerSections.length === 0) {
+  if (error) {
     return (
       <main className="min-h-screen bg-background">
         <section className="py-12">
           <div className="container mx-auto px-4 text-center">
-            <p className="text-xl text-red-600">לא נמצאו תפילות</p>
+            <p className="text-xl text-red-600">{error}</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (prayerSections.length === 0) {
+    return (
+      <main className="min-h-screen bg-background">
+        <section className="py-12">
+          <div className="container mx-auto px-4">
+            <div className="max-w-2xl mx-auto text-center">
+              <div className="bg-linen p-8 rounded-lg shadow-md">
+                <h2 className="text-2xl font-bold mb-4">תפילות באזכרה</h2>
+                <p className="text-lg mb-4">
+                  נוסחי התפילות עדיין בתהליך אימות משפחתי
+                </p>
+                <p className="text-gray-600">
+                  התכנים יפורסמו בקרוב לאחר אישור המשפחה והרב
+                </p>
+              </div>
+            </div>
           </div>
         </section>
       </main>

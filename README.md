@@ -251,20 +251,21 @@ const png = await generateQRCodePNG('https://site.com/prayers');
 
 ## 📤 Deployment
 
-### Firebase App Hosting (מומלץ)
+### Firebase Hosting (מומלץ)
 
-הפרויקט מוגדר לפריסה ב-Firebase App Hosting עם Next.js SSR.
+הפרויקט מוגדר לפריסה ב-Firebase Hosting כאתר סטטי (Spark Plan - חינם).
 
 **ראה [FIREBASE_DEPLOYMENT.md](./FIREBASE_DEPLOYMENT.md) להוראות שלב-אחר-שלב מלאות.**
 
 **סיכום מהיר**:
-1. צור פרויקט Firebase (דרישה: Blaze plan)
-2. הגדר secrets ב-Cloud Secret Manager
-3. חבר repository מ-GitHub
-4. הפעל deployment אוטומטי
-5. הוסף custom domain
+1. צור פרויקט Firebase (Spark plan - חינם)
+2. התקן Firebase CLI: `npm install -g firebase-tools`
+3. התחבר: `firebase login`
+4. קישור פרויקט: `firebase use --add`
+5. בנייה: `npm run build`
+6. פריסה: `firebase deploy --only hosting`
 
-**עלויות צפויות**: $25-60/חודש (כולל Supabase)
+**עלויות צפויות**: רק עלות הדומיין ($10-30/שנה)
 
 ### Vercel (אלטרנטיבה)
 
@@ -290,6 +291,15 @@ vercel --prod
 
 ## 💰 עלויות ו-Free Tier
 
+### Firebase Hosting (Spark Plan - חינם)
+
+- **Storage**: 10GB
+- **Bandwidth**: 360MB/יום (~10GB/חודש)
+- **Builds**: ללא הגבלה (בניה מקומית)
+- **SSL**: חינם, אוטומטי
+
+**עלות**: **$0/חודש** (בתנאי שהשימוש לא חורג מהמכסה)
+
 ### Supabase Free Tier
 
 - **Database**: 500MB
@@ -302,16 +312,6 @@ vercel --prod
 - צמיחה בינונית: $25-50/חודש
 - שימוש גבוה: $100+/חודש
 
-### Vercel Free Tier
-
-- **Bandwidth**: 100GB/חודש
-- **Builds**: 6,000 דקות/חודש
-- **Serverless functions**: 100GB-Hours
-
-**צפי עלויות**:
-- אתר אישי/משפחתי: בדרך כלל בחינם
-- טרפיק גבוה: $20+/חודש
-
 ### דומיין
 
 - רכישה: $10-30/שנה (תלוי ב-TLD)
@@ -319,9 +319,9 @@ vercel --prod
 
 ### סה"כ - תחזית
 
-- **חודשים ראשונים**: $0-10/חודש (+ דומיין)
-- **שימוש ממוצע**: $30-70/חודש
-- **שימוש גבוה**: $100-200/חודש
+- **חודשים ראשונים**: $0/חודש (רק דומיין)
+- **שימוש ממוצע**: $0-25/חודש (+ דומיין)
+- **שימוש גבוה**: $50-100/חודש (רק Supabase, אם חורגים מ-Free Tier)
 
 ## 🛠️ תחזוקה
 
