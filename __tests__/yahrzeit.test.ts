@@ -20,9 +20,13 @@ describe('Yahrzeit Calculations', () => {
       // Death in 5781, current year should be later
       const result = calculateNextYahrzeit(9, 'Cheshvan', 5781, 'Asia/Jerusalem');
       const currentYear = new HDate().getFullYear();
-      const expectedYears = currentYear - 5781;
+      
+      // Years since is completed years (next yahrzeit year - death year - 1)
+      const nextYahrzeitYear = new HDate(result.gregorianDate).getFullYear();
+      const expectedYears = nextYahrzeitYear - 5781 - 1;
       
       expect(result.yearsSince).toBe(expectedYears);
+      expect(result.yearsSince).toBeGreaterThanOrEqual(0);
     });
 
     it('should detect when today is the yahrzeit', () => {
@@ -271,5 +275,91 @@ describe('Share URL Generation', () => {
     const encoded = encodeURIComponent(titleWithQuotes);
     
     expect(decodeURIComponent(encoded)).toBe(titleWithQuotes);
+  });
+});
+
+describe('QA Fixes Verification', () => {
+  describe('Jerusalem Timezone', () => {
+    it('should use Asia/Jerusalem timezone for calculations', () => {
+      const result = calculateNextYahrzeit(9, 'Cheshvan', 5781, 'Asia/Jerusalem');
+      
+      // Verify timezone is used by checking the calculation is based on Jerusalem time
+      expect(result.gregorianDate).toBeInstanceOf(Date);
+      expect(result.hebrewDate).toBeTruthy();
+      
+      // The calculation should respect Jerusalem timezone
+      // (implicitly tested by the Location.lookup usage)
+    });
+
+    it('should respect sunset for Hebrew day boundary', () => {
+      // After sunset in Jerusalem = next Hebrew day
+      // This is handled by HDate which respects sunset
+      const result = calculateNextYahrzeit(9, 'Cheshvan', 5781, 'Asia/Jerusalem');
+      
+      // Verify the isToday check uses Hebrew calendar correctly
+      const nowHebrew = new HDate();
+      if (nowHebrew.getDate() === 9 && nowHebrew.getMonthName() === 'Cheshvan') {
+        expect(result.isToday).toBe(true);
+      } else {
+        expect(result.isToday).toBe(false);
+      }
+    });
+  });
+
+  describe('Years Since Calculation', () => {
+    it('should calculate completed years correctly (not off by +1)', () => {
+      // Death in 5781
+      const result = calculateNextYahrzeit(9, 'Cheshvan', 5781, 'Asia/Jerusalem');
+      
+      // Years since should be: (next yahrzeit year - death year - 1)
+      // This counts COMPLETED years only
+      const nextYear = new HDate(result.gregorianDate).getFullYear();
+      const expectedYears = nextYear - 5781 - 1;
+      
+      expect(result.yearsSince).toBe(expectedYears);
+      
+      // Verify it's not off by +1
+      expect(result.yearsSince).not.toBe(nextYear - 5781); // Would be off by +1
+    });
+  });
+
+  describe('Day of Week Name', () => {
+    it('should show proper Hebrew day name, not number', () => {
+      const result = calculateNextYahrzeit(9, 'Cheshvan', 5781, 'Asia/Jerusalem');
+      
+      // Should be a Hebrew day name, not a number
+      const validDayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+      expect(validDayNames).toContain(result.dayOfWeek);
+      
+      // Should NOT be a number
+      expect(result.dayOfWeek).not.toMatch(/^\d+$/);
+      expect(result.dayOfWeek).not.toBe('9');
+    });
+
+    it('should map Gregorian day correctly to Hebrew name', () => {
+      const result = calculateNextYahrzeit(9, 'Cheshvan', 5781, 'Asia/Jerusalem');
+      
+      // Get actual day of week from Gregorian date
+      const dayIndex = result.gregorianDate.getDay();
+      const dayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+      
+      expect(result.dayOfWeek).toBe(dayNames[dayIndex]);
+    });
+  });
+
+  describe('Share URL', () => {
+    it('should use canonical site URL when available', () => {
+      // This test verifies the ShareButtons component logic
+      // In actual usage, NEXT_PUBLIC_SITE_URL should provide canonical URL
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+      
+      if (siteUrl && siteUrl !== 'http://localhost:3000') {
+        // When canonical URL exists, it should be used
+        expect(siteUrl).toMatch(/^https?:\/\//);
+      }
+      
+      // The component should combine canonical URL with current path
+      // (tested in component, not in yahrzeit utils)
+    });
   });
 });

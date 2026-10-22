@@ -17,8 +17,23 @@ export default function ShareButtons({
   const [copied, setCopied] = useState(false);
   const [showInstagramHelp, setShowInstagramHelp] = useState(false);
 
-  // Use current URL if not provided
-  const shareUrl = url || (typeof window !== 'undefined' ? window.location.href : '');
+  // Use canonical site URL from config, fallback to current URL
+  const getShareUrl = () => {
+    if (url) return url;
+    
+    // Try to get canonical site URL from environment
+    const siteUrl = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_SITE_URL;
+    if (siteUrl && siteUrl !== 'http://localhost:3000') {
+      // Combine canonical domain with current path
+      const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+      return `${siteUrl}${currentPath}`;
+    }
+    
+    // Fallback to current URL
+    return typeof window !== 'undefined' ? window.location.href : '';
+  };
+  
+  const shareUrl = getShareUrl();
   
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedTitle = encodeURIComponent(title);

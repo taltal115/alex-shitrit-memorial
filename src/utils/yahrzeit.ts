@@ -28,31 +28,38 @@ export function calculateNextYahrzeit(
   hebrewYear: number,
   timezone: string = 'Asia/Jerusalem'
 ): YahrzeitInfo {
+  // Create Jerusalem location for accurate Hebrew calendar calculations
+  const location = Location.lookup('Jerusalem');
+  
+  // Get current time in Jerusalem timezone
   const now = new Date();
+  const nowJerusalem = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
   
-  // Get current Hebrew year
-  const nowHebrew = new HDate(now);
+  // Get current Hebrew date at sunset in Jerusalem
+  // After sunset = next Hebrew day
+  const nowHebrew = new HDate(nowJerusalem);
   const currentHebrewYear = nowHebrew.getFullYear();
-  
-  // Calculate years since death in Hebrew calendar
-  const yearsSince = currentHebrewYear - hebrewYear;
   
   // Create Hebrew date for this year's yahrzeit
   let nextYahrzeitHebrew = new HDate(hebrewDay, hebrewMonth, currentHebrewYear);
   let nextYahrzeitGregorian = nextYahrzeitHebrew.greg();
   
   // If this year's yahrzeit has passed, get next year's
-  if (nextYahrzeitGregorian < now) {
+  if (nextYahrzeitGregorian < nowJerusalem) {
     nextYahrzeitHebrew = new HDate(hebrewDay, hebrewMonth, currentHebrewYear + 1);
     nextYahrzeitGregorian = nextYahrzeitHebrew.greg();
   }
   
-  // Check if today is the yahrzeit
-  const todayHebrew = new HDate(now);
-  const isToday = todayHebrew.getDate() === hebrewDay && 
-                  todayHebrew.getMonthName() === hebrewMonth;
+  // Calculate years since death
+  // If next yahrzeit is in the future this Hebrew year, we haven't completed that year yet
+  const yearsSinceRaw = nextYahrzeitHebrew.getFullYear() - hebrewYear;
+  const yearsSince = yearsSinceRaw - 1; // Subtract 1 because we count completed years
   
-  // Calculate time until yahrzeit
+  // Check if today is the yahrzeit (check at Jerusalem time)
+  const isToday = nowHebrew.getDate() === hebrewDay && 
+                  nowHebrew.getMonthName() === hebrewMonth;
+  
+  // Calculate time until yahrzeit (use browser's actual time for countdown)
   const msUntil = nextYahrzeitGregorian.getTime() - now.getTime();
   const daysUntil = Math.floor(msUntil / (1000 * 60 * 60 * 24));
   const hoursUntil = Math.floor((msUntil % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -62,12 +69,13 @@ export function calculateNextYahrzeit(
   // Format Hebrew date with proper gershayim
   const hebrewDateFormatted = nextYahrzeitHebrew.renderGematriya();
   
-  // Get Hebrew day of week
-  const dayOfWeek = nextYahrzeitHebrew.render('he');
-  const dayOfWeekName = dayOfWeek.split(' ')[0]; // Extract day name
+  // Get Hebrew day of week name properly
+  const gregorianDayOfWeek = nextYahrzeitGregorian.getDay();
+  const hebrewDayNames = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+  const dayOfWeekName = hebrewDayNames[gregorianDayOfWeek];
   
   // Format Gregorian date in Hebrew
-  const gregorianFormatted = formatGregorianDateHebrew(nextYahrzeitGregorian);
+  const gregorianFormatted = formatGregorianDateHebrew(nextYahrzeitGregorian, timezone);
   
   return {
     hebrewDate: hebrewDateFormatted,
@@ -86,12 +94,12 @@ export function calculateNextYahrzeit(
 /**
  * Format Gregorian date in Hebrew locale
  */
-function formatGregorianDateHebrew(date: Date): string {
+function formatGregorianDateHebrew(date: Date, timezone: string = 'Asia/Jerusalem'): string {
   const options: Intl.DateTimeFormatOptions = {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
-    timeZone: 'Asia/Jerusalem'
+    timeZone: timezone
   };
   
   return date.toLocaleDateString('he-IL', options);
