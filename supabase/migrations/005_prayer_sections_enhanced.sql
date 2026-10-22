@@ -24,6 +24,12 @@ SET verification_status = CASE
   ELSE 'pending_family_verification'
 END;
 
+-- Backfill unique section_id values for existing rows with empty string
+-- This ensures the unique constraint can be added successfully
+UPDATE prayer_section 
+SET section_id = 'section-' || id::text
+WHERE section_id = '';
+
 -- Add unique constraint on section_id per memorial
 ALTER TABLE prayer_section 
   ADD CONSTRAINT unique_section_per_memorial UNIQUE(memorial_id, section_id);

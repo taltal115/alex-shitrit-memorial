@@ -3,9 +3,10 @@
 -- This allows any authenticated user to insert before the check runs
 
 -- Fix approval_record INSERT policy
-DROP POLICY IF EXISTS "approval_record_insert" ON approval_record;
+-- Use actual policy name from database
+DROP POLICY IF EXISTS "Approval records insertable by admins" ON approval_record;
 
-CREATE POLICY "approval_record_insert"
+CREATE POLICY "Approval records insertable by admins"
   ON approval_record FOR INSERT
   WITH CHECK (
     EXISTS (
@@ -15,10 +16,11 @@ CREATE POLICY "approval_record_insert"
     )
   );
 
--- Fix audit_log INSERT policy  
-DROP POLICY IF EXISTS "audit_log_insert" ON audit_log;
+-- Fix audit_log INSERT policy
+-- Use actual policy name from database  
+DROP POLICY IF EXISTS "Audit log insertable by authenticated users" ON audit_log;
 
-CREATE POLICY "audit_log_insert"
+CREATE POLICY "Audit log insertable by super admins only"
   ON audit_log FOR INSERT
   WITH CHECK (
     EXISTS (
@@ -35,17 +37,17 @@ BEGIN
     SELECT 1 FROM pg_policies 
     WHERE schemaname = 'public' 
     AND tablename = 'approval_record'
-    AND policyname = 'approval_record_insert'
+    AND policyname = 'Approval records insertable by admins'
   ) THEN
-    RAISE EXCEPTION 'approval_record_insert policy not created';
+    RAISE EXCEPTION 'approval_record INSERT policy not created';
   END IF;
   
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies 
     WHERE schemaname = 'public' 
     AND tablename = 'audit_log'
-    AND policyname = 'audit_log_insert'
+    AND policyname = 'Audit log insertable by super admins only'
   ) THEN
-    RAISE EXCEPTION 'audit_log_insert policy not created';
+    RAISE EXCEPTION 'audit_log INSERT policy not created';
   END IF;
 END $$;

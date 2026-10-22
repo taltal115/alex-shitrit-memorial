@@ -38,7 +38,9 @@ VALUES (
 ON CONFLICT (key) DO NOTHING;
 
 -- Helper function to check if prayer section should be visible
+-- Scoped by memorial_id to prevent admins of one memorial seeing another's pending sections
 CREATE OR REPLACE FUNCTION should_show_prayer_section(
+  p_memorial_id UUID,
   p_is_verified BOOLEAN,
   p_verification_status TEXT,
   p_user_id UUID
@@ -55,7 +57,7 @@ BEGIN
   
   -- Never show rejected sections to public
   IF p_verification_status = 'rejected' THEN
-    -- Only admins can see rejected sections
+    -- Only admins of THIS memorial can see rejected sections
     IF p_user_id IS NULL THEN
       RETURN false;
     END IF;
@@ -63,6 +65,7 @@ BEGIN
     SELECT EXISTS (
       SELECT 1 FROM user_membership
       WHERE user_id = p_user_id
+        AND memorial_id = p_memorial_id
         AND role IN ('content_manager', 'super_admin')
     ) INTO is_admin;
     
@@ -79,7 +82,7 @@ BEGIN
     RETURN true;
   END IF;
   
-  -- Otherwise, only show to admins
+  -- Otherwise, only show to admins of THIS memorial
   IF p_user_id IS NULL THEN
     RETURN false;
   END IF;
@@ -87,6 +90,7 @@ BEGIN
   SELECT EXISTS (
     SELECT 1 FROM user_membership
     WHERE user_id = p_user_id
+      AND memorial_id = p_memorial_id
       AND role IN ('content_manager', 'super_admin')
   ) INTO is_admin;
   
@@ -99,11 +103,13 @@ SET search_path = public, pg_temp;
 DROP POLICY IF EXISTS "Verified prayers are publicly readable" ON prayer_section;
 DROP POLICY IF EXISTS "All prayers readable by admins" ON prayer_section;
 DROP POLICY IF EXISTS "Prayer sections are publicly readable" ON prayer_section;
+DROP POLICY IF EXISTS "Prayer sections visibility" ON prayer_section;
 
 CREATE POLICY "Prayer sections visibility"
   ON prayer_section FOR SELECT
   USING (
     should_show_prayer_section(
+      memorial_id,
       is_verified,
       verification_status,
       auth.uid()
