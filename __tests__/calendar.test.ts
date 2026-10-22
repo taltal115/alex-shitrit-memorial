@@ -1,3 +1,29 @@
+/**
+ * Tests for calendar/ICS file generation
+ */
+
+// Mock the ics library to avoid ESM module issues in Jest
+jest.mock('ics', () => ({
+  createEvents: (events: any[]) => {
+    if (!events || events.length === 0 || !events[0].title || !events[0].start) {
+      return { error: new Error('Invalid event'), value: undefined };
+    }
+    const event = events[0];
+    const location = event.location || '';
+    const description = event.description || '';
+    const icsContent = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Test//Test//EN
+BEGIN:VEVENT
+SUMMARY:${event.title}
+DESCRIPTION:${description}
+LOCATION:${location}
+END:VEVENT
+END:VCALENDAR`;
+    return { error: null, value: icsContent };
+  }
+}));
+
 import {
   generateICSFile,
   generateGoogleCalendarUrl,

@@ -14,6 +14,9 @@ const customJestConfig = {
     '**/__tests__/**/*.test.ts',
     '**/__tests__/**/*.test.tsx',
   ],
+  transformIgnorePatterns: [
+    'node_modules/(?!(nanoid|ics)/)',
+  ],
 }
 
 module.exports = createJestConfig(customJestConfig)
