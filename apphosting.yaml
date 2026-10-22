@@ -1,0 +1,47 @@
+# Firebase App Hosting configuration for Next.js SSR
+# https://firebase.google.com/docs/app-hosting
+
+# Environment configuration
+env:
+  # Supabase Configuration (from Cloud Secret Manager)
+  - variable: NEXT_PUBLIC_SUPABASE_URL
+    secret: SUPABASE_URL
+  - variable: NEXT_PUBLIC_SUPABASE_ANON_KEY
+    secret: SUPABASE_ANON_KEY
+  - variable: SUPABASE_SERVICE_ROLE_KEY
+    secret: SUPABASE_SERVICE_ROLE_KEY
+
+  # Site Configuration
+  - variable: NEXT_PUBLIC_SITE_URL
+    value: https://YOUR_DOMAIN_HERE
+    # Update this after deploying and adding custom domain
+
+  # Cemetery Location for Halachic Times
+  - variable: NEXT_PUBLIC_CEMETERY_LATITUDE
+    value: "31.7683"
+  - variable: NEXT_PUBLIC_CEMETERY_LONGITUDE
+    value: "35.2137"
+  - variable: NEXT_PUBLIC_CEMETERY_TIMEZONE
+    value: Asia/Jerusalem
+
+  # Optional: Hebrew Death Date Fallback (if not set in admin)
+  # These are optional - the admin CMS manages the actual date
+  # - variable: NEXT_PUBLIC_DEATH_DATE_HEBREW_DAY
+  #   value: "9"
+  # - variable: NEXT_PUBLIC_DEATH_DATE_HEBREW_MONTH
+  #   value: "Cheshvan"
+  # - variable: NEXT_PUBLIC_DEATH_DATE_HEBREW_YEAR
+  #   value: "5781"
+
+# Build configuration
+runConfig:
+  # Minimum instance count (0 = scale to zero when idle)
+  minInstances: 0
+  # Maximum instance count
+  maxInstances: 10
+  # CPU allocation (1 = 1 vCPU)
+  cpu: 1
+  # Memory allocation
+  memoryMiB: 512
+  # Concurrency (requests per instance)
+  concurrency: 80
