@@ -7,11 +7,13 @@ Complete step-by-step guide for deploying the Alex Shitrit Memorial Website to F
 ## Architecture Overview
 
 This project uses:
+
 - **Firebase Hosting** (Spark Plan - FREE): Static HTML/CSS/JS hosting
 - **Supabase**: Database, authentication, storage, and Edge Functions
 - **Next.js Static Export**: Pre-rendered static HTML pages
 
 **Key Benefits**:
+
 - ✅ **Free hosting** (only pay for domain)
 - ✅ **Fast global CDN**
 - ✅ **Auto SSL certificates**
@@ -29,6 +31,8 @@ This project uses:
 
 ---
 
+
+
 ## Step 1: Create Firebase Project
 
 1. Go to [Firebase Console](https://console.firebase.google.com/)
@@ -41,7 +45,11 @@ This project uses:
 
 ---
 
+
+
 ## Step 2: Configure Environment Variables
+
+
 
 ### 2.1 Update `.env.local`
 
@@ -64,9 +72,11 @@ NEXT_PUBLIC_CEMETERY_LONGITUDE=35.2137
 NEXT_PUBLIC_CEMETERY_TIMEZONE=Asia/Jerusalem
 ```
 
-**Important**: All environment variables must be `NEXT_PUBLIC_*` for static export.
+**Important**: All environment variables must be `NEXT_PUBLIC_`* for static export.
 
 ---
+
+
 
 ## Step 3: Deploy Supabase Edge Function
 
@@ -78,6 +88,8 @@ The death-date verification functionality requires a server-side function:
 npm install -g supabase
 ```
 
+
+
 ### 3.2 Link Project
 
 ```bash
@@ -85,20 +97,29 @@ supabase login
 supabase link --project-ref your-project-ref
 ```
 
+
+
 ### 3.3 Deploy Edge Function
 
 ```bash
 supabase functions deploy verify-death-date
 ```
 
+
+
 ### 3.4 Set Environment Variables
 
 In Supabase Dashboard → **Settings** → **Functions**:
+
 - No additional env vars needed (uses project URL and keys automatically)
 
 ---
 
+
+
 ## Step 4: Build Static Site
+
+
 
 ### 4.1 Install Dependencies
 
@@ -106,12 +127,16 @@ In Supabase Dashboard → **Settings** → **Functions**:
 npm install
 ```
 
+
+
 ### 4.2 Run Tests
 
 ```bash
 npm test
 npm run lint
 ```
+
+
 
 ### 4.3 Build for Production
 
@@ -128,6 +153,7 @@ npx serve out
 ```
 
 Open `http://localhost:3000` and verify:
+
 - ✅ Home page loads
 - ✅ `/prayers` page displays correctly
 - ✅ `/admin/prayers` requires auth
@@ -135,13 +161,19 @@ Open `http://localhost:3000` and verify:
 
 ---
 
+
+
 ## Step 5: Deploy to Firebase Hosting
+
+
 
 ### 5.1 Login to Firebase
 
 ```bash
 firebase login
 ```
+
+
 
 ### 5.2 Initialize Project
 
@@ -150,11 +182,14 @@ firebase init hosting
 ```
 
 Select:
+
 - Use an existing project: `alex-shitrit-memorial`
 - Public directory: `out`
 - Configure as single-page app: **No**
 - Set up automatic builds with GitHub: **No** (we'll deploy manually)
 - Overwrite `out/index.html`: **No**
+
+
 
 ### 5.3 Deploy
 
@@ -166,11 +201,16 @@ You'll get a URL like: `https://alex-shitrit-memorial.web.app`
 
 ---
 
+
+
 ## Step 6: Add Custom Domain
+
+
 
 ### 6.1 Purchase Domain
 
 Purchase a domain like `alexshitrit.com` from:
+
 - Google Domains
 - Namecheap
 - GoDaddy
@@ -184,13 +224,15 @@ Purchase a domain like `alexshitrit.com` from:
 2. Click **Add custom domain**
 3. Enter domain: `alexshitrit.com`
 4. Follow DNS verification steps:
-   - Add TXT record to verify ownership
-   - Add A records to point to Firebase:
-     ```
-     A     @     151.101.1.195
-     A     @     151.101.65.195
-     ```
-   - Wait for DNS propagation (up to 48 hours, usually < 1 hour)
+  - Add TXT record to verify ownership
+  - Add A records to point to Firebase:
+    ```
+    A     @     151.101.1.195
+    A     @     151.101.65.195
+    ```
+  - Wait for DNS propagation (up to 48 hours, usually < 1 hour)
+
+
 
 ### 6.3 Add WWW Subdomain (Optional)
 
@@ -198,22 +240,25 @@ Purchase a domain like `alexshitrit.com` from:
 2. Enter: `www.alexshitrit.com`
 3. Choose: Redirect to `alexshitrit.com`
 
+
+
 ### 6.4 Update Site URL
 
 After domain is active:
 
 1. Update `.env.local`:
-   ```env
+  ```env
    NEXT_PUBLIC_SITE_URL=https://alexshitrit.com
-   ```
-
+  ```
 2. Rebuild and redeploy:
-   ```bash
+  ```bash
    npm run build
    firebase deploy --only hosting
-   ```
+  ```
 
 ---
+
+
 
 ## Step 7: Generate QR Code
 
@@ -222,16 +267,22 @@ After domain is active:
 ### 7.1 Stable QR URL
 
 Once custom domain is set up:
+
 - QR URL: `https://alexshitrit.com/prayers`
+
+
 
 ### 7.2 Generate QR Code
 
 Option A: Use admin interface (when implemented)
 
 Option B: Use online tool:
+
 1. Go to [qr-code-generator.com](https://www.qr-code-generator.com/)
 2. Enter URL: `https://alexshitrit.com/prayers`
 3. Download high-res PNG (300+ DPI for printing)
+
+
 
 ### 7.3 Test QR Code
 
@@ -242,7 +293,11 @@ Option B: Use online tool:
 
 ---
 
+
+
 ## Step 8: Ongoing Deployment Workflow
+
+
 
 ### 8.1 Make Changes
 
@@ -262,6 +317,8 @@ npm run build
 npx serve out  # Test production build
 ```
 
+
+
 ### 8.2 Deploy to Production
 
 ```bash
@@ -277,7 +334,11 @@ firebase deploy --only hosting
 
 ---
 
+
+
 ## Costs
+
+
 
 ### Firebase Hosting (Spark Plan - FREE)
 
@@ -287,6 +348,7 @@ firebase deploy --only hosting
 - **SSL certificate**: FREE, auto-renewed
 
 **Expected usage for memorial site**:
+
 - Storage: ~100MB (with images)
 - Bandwidth: 1-5GB/month (unless viral)
 
@@ -301,6 +363,7 @@ firebase deploy --only hosting
 - **Edge Functions**: 500K invocations/month
 
 **Expected usage**:
+
 - Database: ~50MB
 - Storage: ~500MB (memorial images)
 - Bandwidth: 1-2GB/month
@@ -309,12 +372,17 @@ firebase deploy --only hosting
 **Cost**: **$0/month** (within free tier) ✅
 
 **If you exceed free tier**:
+
 - Supabase Pro: $25/month (8GB DB, 100GB storage, 50GB bandwidth)
+
+
 
 ### Domain
 
 - **Purchase**: $10-30/year (one-time)
 - **Renewal**: $10-30/year (annual)
+
+
 
 ### Total Expected Cost
 
@@ -322,6 +390,8 @@ firebase deploy --only hosting
 - **Annual**: **$10-30** (domain only)
 
 ---
+
+
 
 ## Security Checklist
 
@@ -334,6 +404,8 @@ firebase deploy --only hosting
 - [x] Edge Function validates auth before updates
 
 ---
+
+
 
 ## Deployment Checklist
 
@@ -360,7 +432,11 @@ firebase deploy --only hosting
 
 ---
 
+
+
 ## Troubleshooting
+
+
 
 ### Build Fails
 
@@ -372,9 +448,12 @@ npm run type-check
 # Look for: getServerSideProps, API routes, server components
 ```
 
+
+
 ### Page Not Found (404)
 
 Firebase Hosting serves exact file paths. For Next.js:
+
 - `/` → `index.html` ✅
 - `/prayers` → `prayers.html` ✅
 - `/prayers/` → `prayers/index.html` ✅
@@ -391,6 +470,8 @@ npm run build
 firebase deploy --only hosting
 ```
 
+
+
 ### Edge Function Not Working
 
 ```bash
@@ -401,31 +482,41 @@ supabase functions logs verify-death-date
 supabase functions serve verify-death-date
 ```
 
+
+
 ### Custom Domain Not Working
 
 1. Verify DNS records:
-   ```bash
+  ```bash
    dig alexshitrit.com
    dig www.alexshitrit.com
-   ```
+  ```
 2. Check Firebase Console → **Hosting** → domain status
 3. DNS propagation can take 24-48 hours
 4. Clear browser cache
 
 ---
 
+
+
 ## Monitoring
+
+
 
 ### Firebase Hosting
 
 Firebase Console → **Hosting** → **Usage**:
+
 - Bandwidth usage
 - Storage usage
 - Request count
 
+
+
 ### Supabase
 
 Supabase Dashboard → **Reports**:
+
 - Database size
 - Storage usage
 - Bandwidth
@@ -435,7 +526,11 @@ Set up alerts if approaching limits.
 
 ---
 
+
+
 ## Backup Strategy
+
+
 
 ### 1. Database Backup
 
@@ -453,20 +548,28 @@ Download media assets from Supabase Storage dashboard.
 ### 3. Code Backup
 
 GitHub repository is the source of truth:
+
 ```bash
 git push origin main
 ```
 
+
+
 ### 4. Automate Backups
 
 Create a cron job or GitHub Action to:
+
 - Export database monthly
 - Download storage bucket monthly
 - Store in Google Drive or S3
 
 ---
 
+
+
 ## Performance Tips
+
+
 
 ### 1. Image Optimization
 
@@ -475,9 +578,12 @@ Already handled by Next.js Image component (unoptimized for static export, but p
 ### 2. Caching
 
 Configured in `firebase.json`:
+
 - Static assets (JS, CSS, images): 1 year cache
 - HTML pages: No cache (fresh on every visit)
 - `/prayers` page: 1 hour cache
+
+
 
 ### 3. Lazy Loading
 
@@ -493,6 +599,8 @@ npm run build
 ```
 
 ---
+
+
 
 ## Advanced: CI/CD with GitHub Actions
 
@@ -541,6 +649,8 @@ jobs:
 Add secrets in GitHub repo → **Settings** → **Secrets and variables** → **Actions**.
 
 ---
+
+
 
 ## Support
 
