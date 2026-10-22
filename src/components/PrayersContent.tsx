@@ -1,51 +1,57 @@
 'use client';
 
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Minus, Calendar, Clock } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, Plus, Minus, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
-// PLACEHOLDER prayer sections - to be replaced with actual verified content from family
-const prayerSections = [
-  {
-    id: 1,
-    title: 'פתיחה',
-    hebrewText: '[ברכת הפתיחה תאומת על ידי המשפחה לפי המנהג]',
-    notes: 'נוסח הפתיחה יאומת על ידי המשפחה',
-  },
-  {
-    id: 2,
-    title: 'תהילים לפי האותיות',
-    hebrewText: '[פרקי תהילים לפי אותיות השם יאומתו על ידי המשפחה]',
-    notes: 'יש לאמת את פרקי התהילים המדויקים לפי המנהג המשפחתי',
-  },
-  {
-    id: 3,
-    title: 'תהילים לאותיות נשמה',
-    hebrewText: '[פרקי תהילים לאותיות נ.ש.מ.ה - יש לאמת אם נכלל במנהג המשפחתי]',
-    notes: 'לאימות: האם המנהג המשפחתי כולל פרקים אלו',
-  },
-  {
-    id: 4,
-    title: 'תפילת הנשמה',
-    hebrewText: '[נוסח תפילת הנשמה יאומת על ידי המשפחה]',
-    notes: 'לאימות: האם תפילה זו נכללת במנהג המשפחתי',
-  },
-  {
-    id: 5,
-    title: 'קדיש',
-    hebrewText: 'הערה חשובה: אמירת קדיש תלויה בהלכה ובמנהג המשפחה.\n\nיש להתייעץ עם רב לגבי מי רשאי לומר קדיש ובאילו נסיבות.\n\nאתר זה אינו מכיל הוראות הלכתיות ואינו מהווה מקור הלכתי.',
-    notes: 'הערה כללית בלבד - לא מכילה הוראות הלכתיות',
-  },
-  {
-    id: 6,
-    title: 'סיום',
-    hebrewText: 'טוֹב שֵׁם מִשֶּׁמֶן טוֹב וְיוֹם הַמָּוֶת מִיּוֹם הִוָּלְדוֹ\n\n(קהלת ז:א)',
-    notes: 'פסוק סיום מספר קהלת',
-  },
-];
+interface PrayerSection {
+  id: string;
+  section_id: string;
+  section_order: number;
+  title: string;
+  hebrew_text: string;
+  notes: string | null;
+  source_url: string | null;
+  verses: string[] | null;
+  verification_status: 'pending_family_verification' | 'verified' | 'rejected';
+  is_verified: boolean;
+}
 
 export default function PrayersContent() {
+  const [prayerSections, setPrayerSections] = useState<PrayerSection[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentSection, setCurrentSection] = useState(0);
-  const [textSize, setTextSize] = useState(18);
+  const [textSize, setTextSize] = useState(20);
+
+  useEffect(() => {
+    async function fetchPrayerSections() {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from('prayer_section')
+          .select('*')
+          .order('section_order', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching prayer sections:', error);
+          setError('שגיאה בטעינת תפילות');
+          return;
+        }
+
+        if (data) {
+          setPrayerSections(data as PrayerSection[]);
+        }
+      } catch (err) {
+        console.error('Error:', err);
+        setError('שגיאה בטעינת תפילות');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPrayerSections();
+  }, []);
 
   const nextSection = () => {
     if (currentSection < prayerSections.length - 1) {
@@ -70,6 +76,74 @@ export default function PrayersContent() {
       setTextSize(textSize - 2);
     }
   };
+
+  // Render verse with special handling for letter headings and name placeholders
+  const renderVerse = (verse: string, index: number) => {
+    // Check if this is a letter heading in Psalm 119 (format: [letter | position])
+    const letterHeadingMatch = verse.match(/^\[(.+?)\s*\|\s*(\d+)\](.*)$/);
+    if (letterHeadingMatch) {
+      const [, letter, position, description] = letterHeadingMatch;
+      return (
+        <div key={index} className="mt-6 mb-3 text-center">
+          <div className="inline-block px-6 py-3 bg-sand/10 border-2 border-sand rounded-lg">
+            <span className="text-2xl font-bold text-sand">{letter}</span>
+            {description && <span className="mr-2 text-sm text-gray-600">{description}</span>}
+          </div>
+        </div>
+      );
+    }
+
+    // Check for name placeholder: [[NAME: ...]]
+    const nameMatch = verse.match(/\[\[NAME:\s*(.+?)\]\]/);
+    if (nameMatch) {
+      const parts = verse.split(/\[\[NAME:.+?\]\]/);
+      const name = nameMatch[1];
+      return (
+        <p key={index} className="mb-3 leading-loose">
+          {parts[0]}
+          <span className="inline-block px-3 py-1 mx-1 bg-amber-100 border-2 border-amber-400 rounded font-semibold text-amber-900">
+            {name}
+          </span>
+          {parts[1]}
+        </p>
+      );
+    }
+
+    // Check if the line contains a missing space notice (like "לָ֫קָ֥חעֹֽשֵׂה־אֵ֑לֶּה")
+    // This is a known issue in Psalm 15 that needs family verification
+    // Regular verse
+    return (
+      <p key={index} className="mb-3 leading-loose">
+        {verse}
+      </p>
+    );
+  };
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-background">
+        <section className="py-12">
+          <div className="container mx-auto px-4 text-center">
+            <p className="text-xl">טוען תפילות...</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  if (error || prayerSections.length === 0) {
+    return (
+      <main className="min-h-screen bg-background">
+        <section className="py-12">
+          <div className="container mx-auto px-4 text-center">
+            <p className="text-xl text-red-600">{error || 'לא נמצאו תפילות'}</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  const currentPrayerSection = prayerSections[currentSection];
 
   return (
     <main className="min-h-screen bg-background">
@@ -166,7 +240,7 @@ export default function PrayersContent() {
                     {currentSection + 1} מתוך {prayerSections.length}
                   </p>
                   <p className="font-semibold">
-                    {prayerSections[currentSection].title}
+                    {currentPrayerSection.title}
                   </p>
                 </div>
                 
@@ -181,24 +255,76 @@ export default function PrayersContent() {
               </div>
             </div>
 
+            {/* Verification Status Warning */}
+            {currentPrayerSection.verification_status === 'pending_family_verification' && (
+              <div className="mb-6 p-4 bg-amber-50 border-2 border-amber-300 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="text-amber-600 mt-1 flex-shrink-0" size={20} />
+                  <div className="flex-1">
+                    <p className="font-semibold text-amber-900 mb-1">ממתין לאימות משפחתי</p>
+                    <p className="text-sm text-amber-800">
+                      נוסח תפילה זה טרם אושר על ידי המשפחה. הטקסט עשוי להשתנות.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Missing Hashkava Text Warning */}
+            {currentPrayerSection.section_id === 'hashkava-man' && (
+              <div className="mb-6 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="text-blue-600 mt-1 flex-shrink-0" size={20} />
+                  <div className="flex-1">
+                    <p className="font-semibold text-blue-900 mb-1">השכבה חלקית</p>
+                    <p className="text-sm text-blue-800">
+                      הטקסט המלא של ההשכבה אחרי "טוב שם משמן טוב" ממתין לאישור המשפחה.
+                      לא הוספנו טקסט שלא אומת במקור.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Prayer Text */}
             <div className="bg-white p-6 md:p-10 rounded-lg shadow-lg min-h-[400px]">
               <h2 className="text-2xl font-bold mb-6 text-center border-b-2 border-sand pb-4">
-                {prayerSections[currentSection].title}
+                {currentPrayerSection.title}
               </h2>
               
               <div
-                className="leading-relaxed whitespace-pre-wrap"
+                className="leading-relaxed text-right"
                 style={{ fontSize: `${textSize}px` }}
+                dir="rtl"
               >
-                {prayerSections[currentSection].hebrewText}
+                {currentPrayerSection.verses && currentPrayerSection.verses.length > 0 ? (
+                  currentPrayerSection.verses.map((verse, index) => renderVerse(verse, index))
+                ) : (
+                  <p className="text-gray-500 italic text-center">
+                    אין תוכן זמין לתפילה זו
+                  </p>
+                )}
               </div>
 
-              {prayerSections[currentSection].notes && (
+              {currentPrayerSection.notes && (
                 <div className="mt-8 pt-6 border-t border-sand/20">
-                  <p className="text-sm text-gray-600 italic">
-                    הערה: {prayerSections[currentSection].notes}
+                  <p className="text-sm text-gray-600">
+                    <span className="font-semibold">הערה: </span>
+                    {currentPrayerSection.notes}
                   </p>
+                </div>
+              )}
+
+              {currentPrayerSection.source_url && (
+                <div className="mt-4">
+                  <a
+                    href={currentPrayerSection.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-sand hover:underline"
+                  >
+                    מקור בספריא ←
+                  </a>
                 </div>
               )}
             </div>
@@ -211,13 +337,16 @@ export default function PrayersContent() {
                   <button
                     key={section.id}
                     onClick={() => setCurrentSection(index)}
-                    className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+                    className={`px-4 py-2 rounded-lg text-sm transition-colors relative ${
                       currentSection === index
                         ? 'bg-sand text-white'
                         : 'bg-background hover:bg-sand/20'
                     }`}
                   >
-                    {section.title}
+                    {section.title.split('–')[0].trim()}
+                    {section.verification_status === 'pending_family_verification' && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full border-2 border-white"></span>
+                    )}
                   </button>
                 ))}
               </div>
@@ -227,8 +356,7 @@ export default function PrayersContent() {
             <div className="mt-8 p-6 bg-amber-50 border-2 border-amber-200 rounded-lg">
               <h3 className="font-semibold mb-2 text-amber-900">הערה חשובה</h3>
               <p className="text-sm text-amber-800">
-                נוסחי התפילות באתר זה הינם placeholders בלבד ויוחלפו בנוסחים המדויקים
-                שיאומתו על ידי המשפחה בהתאם למנהג ולנוסח המשפחתי.
+                נוסחי התפילות באתר זה ממתינים לאימות סופי מהמשפחה בהתאם למנהג ולנוסח המשפחתי.
                 <br /><br />
                 אתר זה אינו מהווה מקור הלכתי ואינו מכיל הוראות הלכתיות.
                 יש להתייעץ עם רב בכל שאלה הלכתית.
