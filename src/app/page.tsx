@@ -2,7 +2,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
-import { Calendar, BookOpen, Heart, ImageIcon } from 'lucide-react';
+import YahrzeitCountdown from '@/components/YahrzeitCountdown';
+import { BookOpen, Heart, ImageIcon } from 'lucide-react';
 
 export default function HomePage() {
   return (
@@ -26,21 +27,26 @@ export default function HomePage() {
 
               {/* Name and Info */}
               <div className="text-center md:text-right">
-                <h1 className="text-4xl md:text-5xl font-bold mb-4">
-                  אלכס שטרית
+                <h1 className="text-3xl md:text-4xl font-bold mb-2 leading-tight">
+                  אלכס שטרית בן פורטונה ומכלוף
                 </h1>
                 <h2 className="text-2xl md:text-3xl text-sand mb-6">
                   ז״ל
                 </h2>
                 
-                {/* Dates - showing unverified status */}
+                {/* Dates */}
                 <div className="mb-6 p-4 bg-background/50 rounded-lg">
-                  <p className="text-lg mb-2">
-                    תאריך פטירה לועזי: 27 באוקטובר 2020
+                  <p className="text-xl font-semibold mb-3">
+                    1950 – 2020
                   </p>
-                  <p className="text-sm text-gray-600 italic">
-                    התאריך העברי ממתין לאימות המשפחה<br />
-                    (תלוי בשעת הפטירה יחסית לשקיעה)
+                  <p className="text-lg text-gray-700 mb-1">
+                    תאריך פטירה עברי:
+                  </p>
+                  <p className="text-2xl font-bold text-sand mb-2">
+                    ט׳ בחשון תשפ״א
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    27 באוקטובר 2020
                   </p>
                 </div>
 
@@ -83,34 +89,14 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Next Azkara */}
-        <section className="py-12 bg-linen">
-          <div className="container mx-auto px-4">
-            <div className="max-w-2xl mx-auto text-center">
-              <Calendar className="mx-auto mb-4 text-sand" size={48} />
-              <h2 className="text-3xl font-bold mb-4">האזכרה הבאה</h2>
-              
-              <div className="bg-background p-6 rounded-lg shadow-md">
-                <p className="text-sm text-gray-600 mb-2 italic">
-                  התאריך העברי ממתין לאימות סופי מהמשפחה
-                </p>
-                <p className="text-lg text-gray-700 mb-4">
-                  לאחר אימות התאריך העברי, יוצג כאן חישוב אוטומטי<br />
-                  של מועד האזכרה הקרוב עם ספירה לאחור
-                </p>
-                
-                <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
-                  <Link
-                    href="/prayers"
-                    className="bg-sand text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity font-medium"
-                  >
-                    לתפילות ולפרטים
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        {/* Next Yahrzeit Countdown */}
+        <YahrzeitCountdown
+          hebrewDay={9}
+          hebrewMonth="Cheshvan"
+          hebrewYear={5781}
+          deathYear={2020}
+          timezone="Asia/Jerusalem"
+        />
 
         {/* Quick Links */}
         <section className="py-16 bg-background">
