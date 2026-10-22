@@ -1,27 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
   images: {
-    domains: [], // Add Supabase storage domain when configured
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**.supabase.co',
-      },
-    ],
+    unoptimized: true, // Required for static export
   },
-  async headers() {
-    return [
-      {
-        source: '/prayers',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=3600, s-maxage=3600',
-          },
-        ],
-      },
-    ];
-  },
+  // headers() removed - not supported in static export, configure in firebase.json instead
 };
 
 module.exports = nextConfig;
