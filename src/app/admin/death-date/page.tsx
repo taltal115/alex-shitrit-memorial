@@ -1,14 +1,54 @@
+'use client';
+
+import { useAdminAuth } from '@/hooks/useAdminAuth';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import DeathDateVerification from '@/components/admin/DeathDateVerification';
 import { Shield } from 'lucide-react';
 
-export const metadata = {
-  title: 'אימות תאריך עברי - ניהול - אלכס שטרית',
-  description: 'אימות התאריך העברי לפטירה',
-};
-
 export default function DeathDateAdminPage() {
+  const { loading, authorized } = useAdminAuth('super_admin');
+
+  if (loading) {
+    return (
+      <>
+        <Navigation />
+        <main className="min-h-screen bg-background py-12">
+          <div className="container mx-auto px-4 text-center">
+            <p className="text-xl">בודק הרשאות...</p>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  if (!authorized) {
+    return (
+      <>
+        <Navigation />
+        <main className="min-h-screen bg-background py-12">
+          <div className="container mx-auto px-4">
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-8 text-center">
+                <Shield className="mx-auto mb-4 text-amber-600" size={48} />
+                <h2 className="text-2xl font-bold mb-4 text-amber-900">
+                  נדרשת הרשאת Super Admin
+                </h2>
+                <p className="text-amber-800 mb-6">
+                  דף זה מיועד למנהלי-על בלבד.
+                  <br />
+                  רק Super Admin יכול לאמת תאריכים עבריים.
+                </p>
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
   return (
     <>
       <Navigation />
@@ -25,22 +65,6 @@ export default function DeathDateAdminPage() {
             <p className="text-center text-gray-700 max-w-2xl mx-auto">
               קביעת התאריך העברי המדויק לפי שעת הפטירה ביחס לשקיעה
             </p>
-          </div>
-        </section>
-
-        {/* Authentication Notice */}
-        <section className="py-8">
-          <div className="container mx-auto px-4">
-            <div className="max-w-2xl mx-auto p-6 bg-amber-50 border-2 border-amber-200 rounded-lg mb-8">
-              <h3 className="font-semibold mb-2 text-amber-900 flex items-center gap-2">
-                <Shield size={20} />
-                דורש הרשאת Super Admin
-              </h3>
-              <p className="text-sm text-amber-800">
-                רק מנהלי-על (Super Admin) יכולים לאמת את התאריך העברי.
-                אימות זה משפיע על כל חישובי תאריכי האזכרה.
-              </p>
-            </div>
           </div>
         </section>
 
