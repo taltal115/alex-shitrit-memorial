@@ -83,7 +83,8 @@ describe('Calendar Generation', () => {
       
       expect(url).toContain('calendar.google.com');
       expect(url).toContain('action=TEMPLATE');
-      expect(url).toContain('אזכרה');
+      // Hebrew text is URL-encoded in the URL
+      expect(url).toContain('%D7%90%D7%96%D7%9B%D7%A8%D7%94'); // "אזכרה" encoded
     });
 
     it('should include event details in URL', () => {
