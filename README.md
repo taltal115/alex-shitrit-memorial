@@ -2,6 +2,8 @@
 
 אתר הנצחה מקוון לזכרו של אלכס שטרית, בנוי עם Next.js, TypeScript, Supabase, ומותאם לעברית RTL עם נגישות מלאה.
 
+**📖 [Complete Deployment Guide](./DEPLOY.md)** — Step-by-step instructions for deploying to Firebase Hosting (free) + Supabase.
+
 ## 🎯 תכונות עיקריות
 
 - **דף בית** - פורטרט, ציטוט, הקדמה, ספירה לאזכרה הבאה
@@ -251,36 +253,27 @@ const png = await generateQRCodePNG('https://site.com/prayers');
 
 ## 📤 Deployment
 
-### Firebase Hosting (מומלץ)
+**📖 See [DEPLOY.md](./DEPLOY.md) for complete step-by-step deployment guide.**
 
-הפרויקט מוגדר לפריסה ב-Firebase Hosting כאתר סטטי (Spark Plan - חינם).
-
-**ראה [FIREBASE_DEPLOYMENT.md](./FIREBASE_DEPLOYMENT.md) להוראות שלב-אחר-שלב מלאות.**
-
-**סיכום מהיר**:
-1. צור פרויקט Firebase (Spark plan - חינם)
-2. התקן Firebase CLI: `npm install -g firebase-tools`
-3. התחבר: `firebase login`
-4. קישור פרויקט: `firebase use --add`
-5. בנייה: `npm run build`
-6. פריסה: `firebase deploy --only hosting`
-
-**עלויות צפויות**: רק עלות הדומיין ($10-30/שנה)
-
-### Vercel (אלטרנטיבה)
+### Quick Start
 
 ```bash
-# התקן Vercel CLI
-npm i -g vercel
+# Install dependencies
+npm install
 
-# Deploy
-vercel
+# Build static site
+npm run build
 
-# Production deploy
-vercel --prod
+# Deploy to Firebase Hosting
+firebase deploy --only hosting
 ```
 
-הגדר משתני סביבה ב-Vercel Dashboard.
+**Requirements**:
+- Node.js 20+
+- Firebase account (free Spark plan)
+- Supabase account (free tier)
+
+**Cost**: $0/month hosting + domain ($10-30/year)
 
 ### הגדרת דומיין מותאם
 
