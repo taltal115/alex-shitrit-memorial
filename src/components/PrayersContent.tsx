@@ -88,17 +88,140 @@ export default function PrayersContent() {
     }
   };
 
+  // Letter-to-word mapping for Psalm 119
+  const getLetterMapping = (position: number, sectionId: string) => {
+    const nameWords = [
+      { word: 'אלכס', letters: ['א', 'ל', 'כ', 'ס'] },
+      { word: 'יחיא', letters: ['י', 'ח', 'י', 'א'] },
+      { word: 'בן', letters: ['ב', 'ן'] },
+      { word: 'פורטונה', letters: ['פ', 'ו', 'ר', 'ט', 'ו', 'נ', 'ה'] }
+    ];
+    
+    const neshemaWord = { word: 'נשמה', letters: ['נ', 'ש', 'מ', 'ה'] };
+    
+    if (sectionId === 'psalm119-name') {
+      let currentPos = 1;
+      for (const { word, letters } of nameWords) {
+        if (position >= currentPos && position < currentPos + letters.length) {
+          const letterIndex = position - currentPos;
+          return {
+            fullName: 'אלכס יחיא בן פורטונה',
+            currentWord: word,
+            currentLetter: letters[letterIndex],
+            letterPosition: position
+          };
+        }
+        currentPos += letters.length;
+      }
+    } else if (sectionId === 'psalm119-neshama') {
+      const letterIndex = position - 1;
+      if (letterIndex >= 0 && letterIndex < neshemaWord.letters.length) {
+        return {
+          fullName: 'נשמה',
+          currentWord: neshemaWord.word,
+          currentLetter: neshemaWord.letters[letterIndex],
+          letterPosition: position
+        };
+      }
+    }
+    
+    return null;
+  };
+
+  // Render Psalm 119 header with highlighted letter
+  const renderPsalm119Header = (letter: string, position: number, sectionId: string) => {
+    const mapping = getLetterMapping(position, sectionId);
+    
+    if (!mapping) return null;
+    
+    // Build array of letters with their positions in the full name
+    const buildLetterPositions = (text: string, sectionId: string) => {
+      const allWords = sectionId === 'psalm119-name' 
+        ? [
+            { word: 'אלכס', letters: ['א', 'ל', 'כ', 'ס'] },
+            { word: 'יחיא', letters: ['י', 'ח', 'י', 'א'] },
+            { word: 'בן', letters: ['ב', 'ן'] },
+            { word: 'פורטונה', letters: ['פ', 'ו', 'ר', 'ט', 'ו', 'נ', 'ה'] }
+          ]
+        : [{ word: 'נשמה', letters: ['נ', 'ש', 'מ', 'ה'] }];
+      
+      const letterPositions: { char: string; pos: number; isSpace: boolean; charIndex: number }[] = [];
+      let currentPos = 1;
+      let charIndex = 0;
+      
+      for (let wordIdx = 0; wordIdx < allWords.length; wordIdx++) {
+        const { letters: wordLetters } = allWords[wordIdx];
+        
+        for (let i = 0; i < wordLetters.length; i++) {
+          letterPositions.push({
+            char: text[charIndex],
+            pos: currentPos,
+            isSpace: false,
+            charIndex
+          });
+          currentPos++;
+          charIndex++;
+        }
+        
+        // Add space after word (except last word)
+        if (wordIdx < allWords.length - 1 && charIndex < text.length) {
+          letterPositions.push({
+            char: ' ',
+            pos: -1,
+            isSpace: true,
+            charIndex
+          });
+          charIndex++;
+        }
+      }
+      
+      return letterPositions;
+    };
+    
+    const letterPositions = buildLetterPositions(mapping.fullName, sectionId);
+    
+    return (
+      <div className="mb-4 p-4 bg-sand/5 border-2 border-sand/20 rounded-lg">
+        <div className="text-center text-2xl mb-2 leading-loose">
+          {letterPositions.map((item, idx) => {
+            if (item.isSpace) return <span key={idx}> </span>;
+            
+            const isHighlighted = item.pos === position;
+            
+            return (
+              <span
+                key={idx}
+                className={isHighlighted ? 'text-sand font-bold text-3xl' : ''}
+              >
+                {item.char}
+              </span>
+            );
+          })}
+        </div>
+        <div className="text-center text-lg text-sand font-semibold">
+          {letter}׳ – {mapping.currentWord}
+        </div>
+      </div>
+    );
+  };
+
   // Render verse with special handling for letter headings and name placeholders
   const renderVerse = (verse: string, index: number) => {
     // Check if this is a letter heading in Psalm 119 (format: [letter | position])
     const letterHeadingMatch = verse.match(/^\[(.+?)\s*\|\s*(\d+)\](.*)$/);
     if (letterHeadingMatch) {
       const [, letter, position, description] = letterHeadingMatch;
+      const sectionId = currentPrayerSection.section_id;
+      const showEnhancedHeader = sectionId === 'psalm119-name' || sectionId === 'psalm119-neshama';
+      
       return (
-        <div key={index} className="mt-6 mb-3 text-center">
-          <div className="inline-block px-6 py-3 bg-sand/10 border-2 border-sand rounded-lg">
-            <span className="text-2xl font-bold text-sand">{letter}</span>
-            {description && <span className="mr-2 text-sm text-gray-600">{description}</span>}
+        <div key={index}>
+          {showEnhancedHeader && renderPsalm119Header(letter, parseInt(position), sectionId)}
+          <div className="mt-6 mb-3 text-center">
+            <div className="inline-block px-6 py-3 bg-sand/10 border-2 border-sand rounded-lg">
+              <span className="text-2xl font-bold text-sand">{letter}</span>
+              {description && <span className="mr-2 text-sm text-gray-600">{description}</span>}
+            </div>
           </div>
         </div>
       );
@@ -122,9 +245,12 @@ export default function PrayersContent() {
 
     // Check if the line contains a missing space notice (like "לָ֫קָ֥חעֹֽשֵׂה־אֵ֑לֶּה")
     // This is a known issue in Psalm 15 that needs family verification
-    // Regular verse
+    // Regular verse with drop cap for Psalm 119
+    const isPsalm119 = currentPrayerSection.section_id === 'psalm119-name' || 
+                       currentPrayerSection.section_id === 'psalm119-neshama';
+    
     return (
-      <p key={index} className="mb-3 leading-loose">
+      <p key={index} className={`mb-3 leading-loose ${isPsalm119 ? 'verse-drop-cap' : ''}`}>
         {verse}
       </p>
     );
@@ -366,22 +492,62 @@ export default function PrayersContent() {
             <div className="mt-8 p-4 bg-linen rounded-lg">
               <p className="text-sm font-medium mb-3 text-center">מעבר מהיר:</p>
               <div className="flex flex-wrap gap-2 justify-center">
-                {prayerSections.map((section, index) => (
-                  <button
-                    key={section.id}
-                    onClick={() => setCurrentSection(index)}
-                    className={`px-4 py-2 rounded-lg text-sm transition-colors relative ${
-                      currentSection === index
-                        ? 'bg-sand text-white'
-                        : 'bg-background hover:bg-sand/20'
-                    }`}
-                  >
-                    {section.title.split('–')[0].trim()}
-                    {section.verification_status === 'pending_family_verification' && (
-                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full border-2 border-white"></span>
-                    )}
-                  </button>
-                ))}
+                {(() => {
+                  const renderedSections: JSX.Element[] = [];
+                  let psalm119Merged = false;
+                  
+                  prayerSections.forEach((section, index) => {
+                    const isPsalm119 = section.section_id === 'psalm119-name' || 
+                                       section.section_id === 'psalm119-neshama';
+                    
+                    if (isPsalm119 && !psalm119Merged) {
+                      // Render merged Psalm 119 button (links to first psalm119 section)
+                      const hasPending = prayerSections.some(s => 
+                        (s.section_id === 'psalm119-name' || s.section_id === 'psalm119-neshama') &&
+                        s.verification_status === 'pending_family_verification'
+                      );
+                      
+                      renderedSections.push(
+                        <button
+                          key="psalm119-merged"
+                          onClick={() => setCurrentSection(index)}
+                          className={`px-4 py-2 rounded-lg text-sm transition-colors relative ${
+                            currentPrayerSection.section_id === 'psalm119-name' || 
+                            currentPrayerSection.section_id === 'psalm119-neshama'
+                              ? 'bg-sand text-white'
+                              : 'bg-background hover:bg-sand/20'
+                          }`}
+                        >
+                          תהילים קיט
+                          {hasPending && (
+                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full border-2 border-white"></span>
+                          )}
+                        </button>
+                      );
+                      psalm119Merged = true;
+                    } else if (!isPsalm119) {
+                      // Render regular section button
+                      renderedSections.push(
+                        <button
+                          key={section.id}
+                          onClick={() => setCurrentSection(index)}
+                          className={`px-4 py-2 rounded-lg text-sm transition-colors relative ${
+                            currentSection === index
+                              ? 'bg-sand text-white'
+                              : 'bg-background hover:bg-sand/20'
+                          }`}
+                        >
+                          {section.title.split('–')[0].trim()}
+                          {section.verification_status === 'pending_family_verification' && (
+                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-400 rounded-full border-2 border-white"></span>
+                          )}
+                        </button>
+                      );
+                    }
+                  });
+                  
+                  return renderedSections;
+                })()}
               </div>
             </div>
 
