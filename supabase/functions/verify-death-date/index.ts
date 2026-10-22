@@ -3,12 +3,35 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Restrict CORS to site domain(s)
+const ALLOWED_ORIGINS = [
+  Deno.env.get('NEXT_PUBLIC_SITE_URL'),
+  'http://localhost:3000',
+  'http://localhost:3001',
+].filter(Boolean);
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  };
+  
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+  } else if (ALLOWED_ORIGINS.length > 0) {
+    // Fallback to first allowed origin if origin not provided or not allowed
+    headers['Access-Control-Allow-Origin'] = ALLOWED_ORIGINS[0];
+  } else {
+    // Development fallback
+    headers['Access-Control-Allow-Origin'] = '*';
+  }
+  
+  return headers;
+}
 
 Deno.serve(async (req) => {
+  const origin = req.headers.get('origin');
+  const corsHeaders = getCorsHeaders(origin);
+  
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -41,16 +64,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if user is super admin
+    // Check if user is super admin (check ALL memberships, not just [0])
     const { data: memberships } = await supabaseClient
       .from('user_membership')
       .select('role')
       .eq('user_id', user.id);
 
-    const isSuperAdmin =
-      memberships &&
-      memberships.length > 0 &&
-      memberships[0].role === 'super_admin';
+    const isSuperAdmin = memberships?.some(m => m.role === 'super_admin');
 
     if (!isSuperAdmin) {
       return new Response(
@@ -64,6 +84,30 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body = await req.json();
+    
+    // Validate all required fields
+    const requiredFields = [
+      'death_time_relative_to_sunset',
+      'hebrew_date_before_sunset_day',
+      'hebrew_date_before_sunset_month',
+      'hebrew_date_before_sunset_year',
+      'hebrew_date_after_sunset_day',
+      'hebrew_date_after_sunset_month',
+      'hebrew_date_after_sunset_year',
+    ];
+    
+    for (const field of requiredFields) {
+      if (!(field in body) || body[field] === null || body[field] === undefined) {
+        return new Response(
+          JSON.stringify({ error: `Missing required field: ${field}` }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+          }
+        );
+      }
+    }
+    
     const { death_time_relative_to_sunset } = body;
 
     if (!['before_sunset', 'after_sunset'].includes(death_time_relative_to_sunset)) {
