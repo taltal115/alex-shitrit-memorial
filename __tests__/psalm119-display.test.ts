@@ -257,6 +257,114 @@ describe('Psalm 119 Display Enhancements', () => {
     });
   });
 
+  describe('Drop Cap Logic', () => {
+    const isLetterHeading = (verse: string) => {
+      return /^\[(.+?)\s*\|\s*(\d+)\](.*)$/.test(verse);
+    };
+
+    it('should identify letter headings correctly', () => {
+      expect(isLetterHeading('[א | 1] פסוקים 1-8')).toBe(true);
+      expect(isLetterHeading('[ב | 2]')).toBe(true);
+      expect(isLetterHeading('אַשְׁרֵי תְמִימֵי־דָרֶךְ')).toBe(false);
+      expect(isLetterHeading('בְּכָל־לֵב יִדְרְשׁוּהוּ')).toBe(false);
+    });
+
+    it('should apply drop cap only to first verse after letter heading', () => {
+      const verses = [
+        '[א | 1] פסוקים 1-8',
+        'אַשְׁרֵי תְמִימֵי־דָרֶךְ',  // Should have drop cap (first after heading)
+        'אַשְׁרֵי נֹצְרֵי עֵדֹתָיו',    // Should NOT have drop cap
+        'אַף לֹא־פָעֲלוּ עַוְלָה',     // Should NOT have drop cap
+      ];
+
+      const isPsalm119 = true;
+      
+      // Check each verse
+      verses.forEach((verse, index) => {
+        const isHeading = isLetterHeading(verse);
+        const isFirstVerseAfterHeading = index > 0 && isLetterHeading(verses[index - 1]);
+        const isFirstVerse = index === 0;
+        const shouldHaveDropCap = isPsalm119 && !isHeading && (isFirstVerseAfterHeading || isFirstVerse);
+
+        if (index === 0) {
+          expect(shouldHaveDropCap).toBe(false); // It's a heading
+        } else if (index === 1) {
+          expect(shouldHaveDropCap).toBe(true);  // First verse after heading
+        } else {
+          expect(shouldHaveDropCap).toBe(false); // Not first verse after heading
+        }
+      });
+    });
+
+    it('should apply drop cap to first verse of section if no heading', () => {
+      const verses = [
+        'מַה־טֹּבוּ אֹהָלֶיךָ',     // Should have drop cap (first verse)
+        'יַעֲקֹב מִשְׁכְּנֹתֶיךָ',    // Should NOT have drop cap
+      ];
+
+      const isPsalm119 = true;
+      const index0IsHeading = isLetterHeading(verses[0]);
+      
+      expect(index0IsHeading).toBe(false);
+      
+      // First verse should have drop cap
+      const shouldHaveDropCap0 = isPsalm119 && !index0IsHeading && (0 === 0);
+      expect(shouldHaveDropCap0).toBe(true);
+      
+      // Second verse should not
+      const shouldHaveDropCap1 = isPsalm119 && !isLetterHeading(verses[1]) && isLetterHeading(verses[0]);
+      expect(shouldHaveDropCap1).toBe(false);
+    });
+
+    it('should not apply drop cap to non-Psalm119 sections', () => {
+      const verses = [
+        'מַה־טֹּבוּ אֹהָלֶיךָ',
+        'יַעֲקֹב מִשְׁכְּנֹתֶיךָ',
+      ];
+
+      const isPsalm119 = false;
+      
+      verses.forEach((verse, index) => {
+        const isFirstVerseAfterHeading = index > 0 && isLetterHeading(verses[index - 1]);
+        const isFirstVerse = index === 0;
+        const shouldHaveDropCap = isPsalm119 && (isFirstVerseAfterHeading || isFirstVerse);
+        
+        expect(shouldHaveDropCap).toBe(false);
+      });
+    });
+
+    it('should handle multiple letter headings correctly', () => {
+      const verses = [
+        '[א | 1] פסוקים 1-8',
+        'אַשְׁרֵי תְמִימֵי־דָרֶךְ',  // Drop cap
+        'אַשְׁרֵי נֹצְרֵי עֵדֹתָיו',    // No drop cap
+        '[ל | 2] פסוקים 9-16',
+        'בַּמֶּה יְזַכֶּה־נַּעַר',      // Drop cap
+        'אֶת־אֹרְחוֹ לִשְׁמֹר',        // No drop cap
+      ];
+
+      const isPsalm119 = true;
+      
+      // Check verse at index 1 (first after first heading)
+      expect(isLetterHeading(verses[0])).toBe(true);
+      const shouldHaveDropCap1 = isPsalm119 && !isLetterHeading(verses[1]) && isLetterHeading(verses[0]);
+      expect(shouldHaveDropCap1).toBe(true);
+      
+      // Check verse at index 2 (not first after heading)
+      const shouldHaveDropCap2 = isPsalm119 && !isLetterHeading(verses[2]) && isLetterHeading(verses[1]);
+      expect(shouldHaveDropCap2).toBe(false);
+      
+      // Check verse at index 4 (first after second heading)
+      expect(isLetterHeading(verses[3])).toBe(true);
+      const shouldHaveDropCap4 = isPsalm119 && !isLetterHeading(verses[4]) && isLetterHeading(verses[3]);
+      expect(shouldHaveDropCap4).toBe(true);
+      
+      // Check verse at index 5 (not first after heading)
+      const shouldHaveDropCap5 = isPsalm119 && !isLetterHeading(verses[5]) && isLetterHeading(verses[4]);
+      expect(shouldHaveDropCap5).toBe(false);
+    });
+  });
+
   describe('Quick Jump Menu Grouping', () => {
     it('should identify psalm119 sections', () => {
       const sections = [
