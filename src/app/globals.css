@@ -112,6 +112,16 @@ button {
   text-wrap: balance;
 }
 
+/* Psalm 119 drop caps - RTL correct */
+.verse-drop-cap::first-letter {
+  float: right;
+  font-size: 3em;
+  line-height: 0.9;
+  padding-left: 0.1em;
+  color: var(--color-sand);
+  font-weight: bold;
+}
+
 /* Loading spinner */
 @keyframes spin {
   to {
