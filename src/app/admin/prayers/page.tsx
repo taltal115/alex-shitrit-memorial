@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { createClient } from '@/lib/supabase/client';
-import { CheckCircle, XCircle, AlertCircle, Edit, ExternalLink } from 'lucide-react';
+import { CheckCircle, XCircle, AlertCircle, Edit, ExternalLink, Shield } from 'lucide-react';
 import type { Database } from '@/types/database';
 
 interface PrayerSection {
@@ -22,14 +23,41 @@ interface PrayerSection {
 }
 
 export default function PrayersAdminPage() {
+  const router = useRouter();
   const [prayerSections, setPrayerSections] = useState<PrayerSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    fetchPrayerSections();
+    checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function checkAuth() {
+    try {
+      const supabase = createClient();
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        setIsAuthenticated(false);
+        setCheckingAuth(false);
+        return;
+      }
+
+      // In production, check for super_admin role
+      // For now, any authenticated user can access
+      setIsAuthenticated(true);
+      setCheckingAuth(false);
+      fetchPrayerSections();
+    } catch (err) {
+      console.error('Auth check error:', err);
+      setIsAuthenticated(false);
+      setCheckingAuth(false);
+    }
+  }
 
   async function fetchPrayerSections() {
     try {
@@ -64,6 +92,9 @@ export default function PrayersAdminPage() {
     try {
       const supabase = createClient();
       
+      // Get current user for verified_by
+      const { data: { user } } = await supabase.auth.getUser();
+      
       type UpdateData = Database['public']['Tables']['prayer_section']['Update'];
 
       const updateData: UpdateData = {
@@ -73,19 +104,29 @@ export default function PrayersAdminPage() {
 
       if (newStatus === 'verified') {
         updateData.verified_at = new Date().toISOString();
-        // In a real app, you would get the actual user ID from auth
-        // updateData.verified_by = userId;
+        updateData.verified_by = user?.id || null;
+      } else {
+        // Clear verification fields when resetting or rejecting
+        updateData.verified_at = null;
+        updateData.verified_by = null;
       }
 
-      const { error } = await (supabase
+      const { data, error } = await (supabase
         .from('prayer_section')
         // @ts-expect-error - Supabase auth-helpers type inference issue
         .update(updateData)
-        .eq('id', sectionId));
+        .eq('id', sectionId)
+        .select());
 
       if (error) {
         console.error('Error updating prayer section:', error);
         alert('שגיאה בעדכון סטטוס');
+        return;
+      }
+
+      // Check if update succeeded (RLS may have blocked it)
+      if (!data || data.length === 0) {
+        alert('העדכון נחסם. ייתכן שאין לך הרשאות מספיקות.');
         return;
       }
 
@@ -125,6 +166,52 @@ export default function PrayersAdminPage() {
         );
     }
   };
+
+  if (checkingAuth) {
+    return (
+      <>
+        <Navigation />
+        <main className="min-h-screen bg-background py-12">
+          <div className="container mx-auto px-4 text-center">
+            <p className="text-xl">בודק הרשאות...</p>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Navigation />
+        <main className="min-h-screen bg-background py-12">
+          <div className="container mx-auto px-4">
+            <div className="max-w-2xl mx-auto">
+              <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-8 text-center">
+                <Shield className="mx-auto mb-4 text-amber-600" size={48} />
+                <h2 className="text-2xl font-bold mb-4 text-amber-900">
+                  נדרשת הזדהות
+                </h2>
+                <p className="text-amber-800 mb-6">
+                  דף זה מיועד למנהלי האתר בלבד.
+                  <br />
+                  יש להתחבר כדי לגשת לניהול תפילות.
+                </p>
+                <button
+                  onClick={() => router.push('/admin')}
+                  className="px-6 py-3 bg-sand text-white rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  חזרה לדף הניהול
+                </button>
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
 
   if (loading) {
     return (
@@ -223,32 +310,32 @@ export default function PrayersAdminPage() {
                   </div>
 
                   {/* Status Update Buttons */}
-                  <div className="flex gap-3 border-t pt-4">
+                  <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 border-t pt-4">
                     <button
                       onClick={() => updateVerificationStatus(section.id, 'verified')}
                       disabled={updating === section.id || section.verification_status === 'verified'}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm sm:text-base bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <CheckCircle size={18} />
-                      {section.verification_status === 'verified' ? 'מאומת' : 'אמת'}
+                      <span className="whitespace-nowrap">{section.verification_status === 'verified' ? 'מאומת' : 'אמת'}</span>
                     </button>
                     
                     <button
                       onClick={() => updateVerificationStatus(section.id, 'pending_family_verification')}
                       disabled={updating === section.id || section.verification_status === 'pending_family_verification'}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm sm:text-base bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <AlertCircle size={18} />
-                      {section.verification_status === 'pending_family_verification' ? 'ממתין' : 'החזר להמתנה'}
+                      <span className="whitespace-nowrap">{section.verification_status === 'pending_family_verification' ? 'ממתין' : 'החזר להמתנה'}</span>
                     </button>
 
                     <button
                       onClick={() => updateVerificationStatus(section.id, 'rejected')}
                       disabled={updating === section.id || section.verification_status === 'rejected'}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm sm:text-base bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <XCircle size={18} />
-                      {section.verification_status === 'rejected' ? 'נדחה' : 'דחה'}
+                      <span className="whitespace-nowrap">{section.verification_status === 'rejected' ? 'נדחה' : 'דחה'}</span>
                     </button>
                   </div>
 
