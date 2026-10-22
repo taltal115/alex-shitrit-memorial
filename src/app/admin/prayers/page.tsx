@@ -396,7 +396,7 @@ export default function PrayersAdminPage() {
                 <ul className="space-y-2 text-sm">
                   <li className="flex items-start gap-2">
                     <span className="text-amber-600 mt-1">•</span>
-                    <span><strong>כתיב השם:</strong> "אלכס יחיה בן פורטונה" - אימות האיות העברי המדויק</span>
+                    <span><strong>כתיב השם:</strong> "אלכס יחיא בן פורטונה" - אימות האיות העברי המדויק</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-amber-600 mt-1">•</span>
