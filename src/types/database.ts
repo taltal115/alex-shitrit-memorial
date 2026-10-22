@@ -142,11 +142,17 @@ export interface Database {
           created_at: string
           updated_at: string
           memorial_id: string
+          section_id: string
           section_order: number
           title: string
           hebrew_text: string
           notes: string | null
+          source_url: string | null
+          verses: Json | null
+          verification_status: 'pending_family_verification' | 'verified' | 'rejected'
           is_verified: boolean
+          verified_by: string | null
+          verified_at: string | null
         }
         Insert: Omit<Database['public']['Tables']['prayer_section']['Row'], 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Database['public']['Tables']['prayer_section']['Insert']>
