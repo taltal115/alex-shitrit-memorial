@@ -213,8 +213,13 @@ export default function PrayersContent() {
     );
   };
 
+  // Check if a verse is a letter heading
+  const isLetterHeading = (verse: string) => {
+    return /^\[(.+?)\s*\|\s*(\d+)\](.*)$/.test(verse);
+  };
+
   // Render verse with special handling for letter headings and name placeholders
-  const renderVerse = (verse: string, index: number) => {
+  const renderVerse = (verse: string, index: number, verses: string[]) => {
     // Check if this is a letter heading in Psalm 119 (format: [letter | position])
     const letterHeadingMatch = verse.match(/^\[(.+?)\s*\|\s*(\d+)\](.*)$/);
     if (letterHeadingMatch) {
@@ -253,12 +258,16 @@ export default function PrayersContent() {
 
     // Check if the line contains a missing space notice (like "לָ֫קָ֥חעֹֽשֵׂה־אֵ֑לֶּה")
     // This is a known issue in Psalm 15 that needs family verification
-    // Regular verse with drop cap for Psalm 119
+    // Regular verse - apply drop cap ONLY if previous verse was a letter heading or this is the first verse
     const isPsalm119 = currentPrayerSection.section_id === 'psalm119-name' || 
                        currentPrayerSection.section_id === 'psalm119-neshama';
     
+    const isFirstVerseAfterHeading = index > 0 && isLetterHeading(verses[index - 1]);
+    const isFirstVerse = index === 0;
+    const shouldHaveDropCap = isPsalm119 && (isFirstVerseAfterHeading || isFirstVerse);
+    
     return (
-      <p key={index} className={`mb-3 leading-loose ${isPsalm119 ? 'verse-drop-cap' : ''}`}>
+      <p key={index} className={`mb-3 leading-loose ${shouldHaveDropCap ? 'verse-drop-cap' : ''}`}>
         {verse}
       </p>
     );
@@ -465,7 +474,7 @@ export default function PrayersContent() {
                 dir="rtl"
               >
                 {currentPrayerSection.verses && currentPrayerSection.verses.length > 0 ? (
-                  currentPrayerSection.verses.map((verse, index) => renderVerse(verse, index))
+                  currentPrayerSection.verses.map((verse, index) => renderVerse(verse, index, currentPrayerSection.verses || []))
                 ) : (
                   <p className="text-gray-500 italic text-center">
                     אין תוכן זמין לתפילה זו
