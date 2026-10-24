@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import ShareButtons from './ShareButtons';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -6,6 +7,14 @@ export default function Footer() {
   return (
     <footer className="bg-linen mt-16 py-8">
       <div className="container mx-auto px-4">
+        {/* Share Section */}
+        <div className="mb-8 pb-6 border-b border-sand/20">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <h3 className="font-semibold text-gray-700">שיתוף האתר:</h3>
+            <ShareButtons />
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* About */}
           <div>
