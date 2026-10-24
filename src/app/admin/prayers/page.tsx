@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { sephardiPrayerSections } from '@/data/sephardi-prayers';
@@ -32,50 +33,19 @@ interface PrayerSection {
 
 export default function PrayersAdminPage() {
   const router = useRouter();
+  const { loading: authLoading, authorized } = useAdminAuth();
   const [prayerSections, setPrayerSections] = useState<PrayerSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
   const [usingLocalPrayers, setUsingLocalPrayers] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    checkAuth();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  async function checkAuth() {
-    if (!isSupabaseConfigured()) {
-      setIsAuthenticated(true);
-      setCheckingAuth(false);
-      setPrayerSections(localPrayerSections);
-      setUsingLocalPrayers(true);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const supabase = createClient();
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-      if (authError || !user) {
-        setIsAuthenticated(false);
-        setCheckingAuth(false);
-        return;
-      }
-
-      // In production, check for super_admin role
-      // For now, any authenticated user can access
-      setIsAuthenticated(true);
-      setCheckingAuth(false);
+    if (!authLoading && authorized) {
       fetchPrayerSections();
-    } catch (err) {
-      console.error('Auth check error:', err);
-      setIsAuthenticated(false);
-      setCheckingAuth(false);
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, authorized]);
 
   async function fetchPrayerSections() {
     if (!isSupabaseConfigured()) {
@@ -194,7 +164,7 @@ export default function PrayersAdminPage() {
     }
   };
 
-  if (checkingAuth) {
+  if (authLoading) {
     return (
       <>
         <Navigation />
@@ -208,7 +178,7 @@ export default function PrayersAdminPage() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (!authorized) {
     return (
       <>
         <Navigation />
