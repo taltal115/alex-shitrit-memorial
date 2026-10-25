@@ -1,15 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { sephardiPrayerSections } from '@/data/sephardi-prayers';
-import { createClient } from '@/lib/supabase/client';
-import { isSupabaseConfigured } from '@/lib/supabase/env';
-import { CheckCircle, XCircle, AlertCircle, Edit, ExternalLink, Shield } from 'lucide-react';
-import type { Database } from '@/types/database';
+import { seedBundledPrayersIfEmpty, updatePrayerVerification } from '@/lib/firebase/data';
+import { isFirebaseConfigured } from '@/lib/firebase/config';
+import AdminSignIn from '@/components/admin/AdminSignIn';
+import { CheckCircle, XCircle, AlertCircle, ExternalLink } from 'lucide-react';
 
 const localPrayerSections: PrayerSection[] = sephardiPrayerSections.map((section) => ({
   ...section,
@@ -32,7 +31,6 @@ interface PrayerSection {
 }
 
 export default function PrayersAdminPage() {
-  const router = useRouter();
   const { loading: authLoading, authorized } = useAdminAuth();
   const [prayerSections, setPrayerSections] = useState<PrayerSection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +46,7 @@ export default function PrayersAdminPage() {
   }, [authLoading, authorized]);
 
   async function fetchPrayerSections() {
-    if (!isSupabaseConfigured()) {
+    if (!isFirebaseConfigured()) {
       setPrayerSections(localPrayerSections);
       setUsingLocalPrayers(true);
       setLoading(false);
@@ -56,23 +54,10 @@ export default function PrayersAdminPage() {
     }
 
     try {
-      const supabase = createClient();
-      const { data, error: fetchError } = await supabase
-        .from('prayer_section')
-        .select('*')
-        .order('section_order', { ascending: true });
-
-      if (fetchError) {
-        console.error('Error fetching prayer sections:', fetchError);
-        setError('שגיאה בטעינת תפילות');
-        return;
-      }
-
+      const data = await seedBundledPrayersIfEmpty();
       setUsingLocalPrayers(false);
       setError(null);
-      if (data) {
-        setPrayerSections(data as PrayerSection[]);
-      }
+      setPrayerSections(data);
     } catch (err) {
       console.error('Error:', err);
       setError('שגיאה בטעינת תפילות');
@@ -87,47 +72,7 @@ export default function PrayersAdminPage() {
   ) {
     setUpdating(sectionId);
     try {
-      const supabase = createClient();
-      
-      // Get current user for verified_by
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      type UpdateData = Database['public']['Tables']['prayer_section']['Update'];
-
-      const updateData: UpdateData = {
-        verification_status: newStatus,
-        is_verified: newStatus === 'verified',
-      };
-
-      if (newStatus === 'verified') {
-        updateData.verified_at = new Date().toISOString();
-        updateData.verified_by = user?.id || null;
-      } else {
-        // Clear verification fields when resetting or rejecting
-        updateData.verified_at = null;
-        updateData.verified_by = null;
-      }
-
-      const { data, error } = await (supabase
-        .from('prayer_section')
-        // @ts-expect-error - Supabase auth-helpers type inference issue
-        .update(updateData)
-        .eq('id', sectionId)
-        .select());
-
-      if (error) {
-        console.error('Error updating prayer section:', error);
-        alert('שגיאה בעדכון סטטוס');
-        return;
-      }
-
-      // Check if update succeeded (RLS may have blocked it)
-      if (!data || data.length === 0) {
-        alert('העדכון נחסם. ייתכן שאין לך הרשאות מספיקות.');
-        return;
-      }
-
-      // Refresh the list
+      await updatePrayerVerification(sectionId, newStatus);
       await fetchPrayerSections();
       alert('סטטוס עודכן בהצלחה');
     } catch (err) {
@@ -185,23 +130,10 @@ export default function PrayersAdminPage() {
         <main className="min-h-screen bg-background py-12">
           <div className="container mx-auto px-4">
             <div className="max-w-2xl mx-auto">
-              <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-8 text-center">
-                <Shield className="mx-auto mb-4 text-amber-600" size={48} />
-                <h2 className="text-2xl font-bold mb-4 text-amber-900">
-                  נדרשת הזדהות
-                </h2>
-                <p className="text-amber-800 mb-6">
-                  דף זה מיועד למנהלי האתר בלבד.
-                  <br />
-                  יש להתחבר כדי לגשת לניהול תפילות.
-                </p>
-                <button
-                  onClick={() => router.push('/admin')}
-                  className="px-6 py-3 bg-sand text-white rounded-lg hover:opacity-90 transition-opacity"
-                >
-                  חזרה לדף הניהול
-                </button>
-              </div>
+              <AdminSignIn
+                title="נדרשת הזדהות"
+                message="דף זה מיועד למנהלי האתר בלבד. יש להתחבר כדי לגשת לניהול תפילות."
+              />
             </div>
           </div>
         </main>
@@ -258,7 +190,7 @@ export default function PrayersAdminPage() {
             <div className="max-w-4xl mx-auto space-y-6">
               {usingLocalPrayers && (
                 <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-lg text-amber-900">
-                  מוצגים נוסחי התפילה המקומיים. שמירת סטטוס אימות תפעל אחרי חיבור Supabase.
+                  מוצגים נוסחי התפילה המקומיים. שמירת סטטוס אימות תפעל אחרי חיבור Firebase.
                 </div>
               )}
 

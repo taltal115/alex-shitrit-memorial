@@ -1,8 +1,8 @@
 # אתר הנצחה - אלכס שטרית ז"ל
 
-אתר הנצחה מקוון לזכרו של אלכס שטרית, בנוי עם Next.js, TypeScript, Supabase, ומותאם לעברית RTL עם נגישות מלאה.
+אתר הנצחה מקוון לזכרו של אלכס שטרית, בנוי עם Next.js, TypeScript ו-Firebase, ומותאם לעברית RTL עם נגישות מלאה.
 
-**📖 [Complete Deployment Guide](./DEPLOY.md)** — Step-by-step instructions for deploying to Firebase Hosting (free) + Supabase.
+**📖 [Complete Deployment Guide](./DEPLOY.md)** — Firebase Hosting, Authentication, and Firestore.
 
 ## 🎯 תכונות עיקריות
 
@@ -18,7 +18,7 @@
 
 - Node.js 18.x או גבוה יותר
 - npm או yarn
-- חשבון Supabase (ראה הגדרה למטה)
+- חשבון Firebase (ראה הגדרה למטה)
 
 ## 🚀 התקנה והרצה מקומית
 
@@ -41,10 +41,13 @@ cp .env.example .env.local
 ערוך את `.env.local` והשלם את הערכים הבאים:
 
 ```env
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
+# Firebase web app (Project settings → Your apps)
+NEXT_PUBLIC_FIREBASE_API_KEY=your-firebase-api-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=alex-shitrit-memorial.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=alex-shitrit-memorial
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=alex-shitrit-memorial.firebasestorage.app
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
 
 # Site Configuration
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
@@ -64,38 +67,20 @@ NEXT_PUBLIC_CEMETERY_LONGITUDE=35.2137
 NEXT_PUBLIC_CEMETERY_TIMEZONE=Asia/Jerusalem
 ```
 
-### 3. הגדרת Supabase
+### 3. הגדרת Firebase
 
-#### יצירת פרויקט Supabase
+האתר רץ על Firebase Hosting. התוכן וההתחברות נשמרים ב-Firestore וב-Firebase Authentication.
 
-1. עבור אל [supabase.com](https://supabase.com)
-2. צור פרויקט חדש
-3. העתק את ה-URL וה-anon key מהגדרות הפרויקט
-
-#### הרצת Migrations
+1. בפרויקט `alex-shitrit-memorial`, הוסיפו אפליקציית Web והעתיקו את מפתחות ה-config ל-`.env.local`.
+2. הפעילו **Authentication → Google** ו-**Email/Password**.
+3. הוסיפו את כתובת האתר ל-Authorized domains (`localhost` ו-`alex-shitrit-memorial.web.app`).
+4. פרסו את כללי האבטחה:
 
 ```bash
-# התקן את Supabase CLI
-npm install -g supabase
-
-# התחבר לפרויקט
-supabase link --project-ref your-project-ref
-
-# הרץ את ה-migrations
-supabase db push
+firebase deploy --only firestore:rules,storage
 ```
 
-לחלופין, העתק את תוכן הקבצים מ-`supabase/migrations/` והרץ אותם ישירות ב-SQL Editor של Supabase.
-
-#### הגדרת Authentication
-
-1. בפאנל Supabase, עבור אל **Authentication > Providers**
-2. הפעל **Google OAuth**:
-   - הרשם ל-Google Cloud Console
-   - צור OAuth 2.0 credentials
-   - הוסף את ה-Client ID ו-Client Secret ב-Supabase
-3. הפעל **Email authentication**
-4. הגדר Email Templates (אופציונלי)
+מנהל ראשון: החשבון `taltal115@gmail.com` מוגדר ב-`src/config/admins.ts` וב-`firestore.rules`.
 
 #### הגדרת Storage
 
@@ -352,8 +337,8 @@ npm audit fix
 
 ## 🔐 Security
 
-- אימות דרך Supabase Auth (Google OAuth + Email)
-- Row Level Security (RLS) על כל הטבלאות
+- אימות דרך Firebase Authentication (Google ודוא״ל)
+- כללי אבטחה של Firestore על התפילות, האזכרה והתפקידים
 - הגבלת גודל ק files
 - Rate limiting על טפסים ציבוריים
 - Audit log למעקב אחר פעולות מנהלים
@@ -362,7 +347,7 @@ npm audit fix
 ## 📚 משאבים נוספים
 
 - [Next.js Documentation](https://nextjs.org/docs)
-- [Supabase Documentation](https://supabase.com/docs)
+- [Firebase Documentation](https://firebase.google.com/docs)
 - [Hebcal API](https://www.hebcal.com/home/developer-apis)
 - [WCAG Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
 

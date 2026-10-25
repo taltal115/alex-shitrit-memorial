@@ -4,6 +4,7 @@ import { useAdminAuth } from '@/hooks/useAdminAuth';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import DeathDateVerification from '@/components/admin/DeathDateVerification';
+import AdminSignIn from '@/components/admin/AdminSignIn';
 import { Shield } from 'lucide-react';
 
 export default function DeathDateAdminPage() {
@@ -30,17 +31,10 @@ export default function DeathDateAdminPage() {
         <main className="min-h-screen bg-background py-12">
           <div className="container mx-auto px-4">
             <div className="max-w-2xl mx-auto">
-              <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-8 text-center">
-                <Shield className="mx-auto mb-4 text-amber-600" size={48} />
-                <h2 className="text-2xl font-bold mb-4 text-amber-900">
-                  נדרשת הרשאת Super Admin
-                </h2>
-                <p className="text-amber-800 mb-6">
-                  דף זה מיועד למנהלי-על בלבד.
-                  <br />
-                  רק Super Admin יכול לאמת תאריכים עבריים.
-                </p>
-              </div>
+              <AdminSignIn
+                title="נדרשת הרשאת Super Admin"
+                message="דף זה מיועד למנהלי-על בלבד. רק Super Admin יכול לאמת תאריכים עבריים."
+              />
             </div>
           </div>
         </main>

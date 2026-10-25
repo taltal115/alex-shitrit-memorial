@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Minus, Calendar, Clock, AlertCircle } from 'lucide-react';
 import { sephardiPrayerSections } from '@/data/sephardi-prayers';
-import { createClient } from '@/lib/supabase/client';
-import { isSupabaseConfigured } from '@/lib/supabase/env';
+import { listPrayerSections } from '@/lib/firebase/data';
+import { isFirebaseConfigured } from '@/lib/firebase/config';
 import { SHOW_PENDING_SECTIONS_PUBLICLY } from '@/config/prayers';
 
 interface PrayerSection {
@@ -29,38 +29,20 @@ export default function PrayersContent() {
 
   useEffect(() => {
     async function fetchPrayerSections() {
-      if (!isSupabaseConfigured()) {
+      if (!isFirebaseConfigured()) {
         setPrayerSections(sephardiPrayerSections);
         setLoading(false);
         return;
       }
 
       try {
-        const supabase = createClient();
-        
-        // Build query based on visibility config
-        let query = supabase
-          .from('prayer_section')
-          .select('*');
-        
-        // Filter based on config: only verified, or verified + pending (never rejected)
-        if (SHOW_PENDING_SECTIONS_PUBLICLY) {
-          query = query.neq('verification_status', 'rejected');
-        } else {
-          query = query.eq('is_verified', true);
-        }
-        
-        const { data, error: fetchError } = await query.order('section_order', { ascending: true });
-
-        if (fetchError) {
-          console.error('Error fetching prayer sections:', fetchError);
-          setError('שגיאה בטעינת תפילות');
-          return;
-        }
-
-        if (data) {
-          setPrayerSections(data as PrayerSection[]);
-        }
+        const data = await listPrayerSections();
+        const visible = data.filter((section) =>
+          SHOW_PENDING_SECTIONS_PUBLICLY
+            ? section.verification_status !== 'rejected'
+            : section.is_verified
+        );
+        setPrayerSections(visible.length > 0 ? visible : sephardiPrayerSections);
       } catch (err) {
         console.error('Error:', err);
         setError('שגיאה בטעינת תפילות');
