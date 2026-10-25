@@ -1,22 +1,22 @@
 /**
- * Hook to check if current user has admin access
- * Used by all /admin pages to enforce role-based access
+ * Hook to check if the current Firebase user has admin access.
  */
 
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { isSupabaseConfigured } from '@/lib/supabase/env';
-
-export type AdminRole = 'content_manager' | 'super_admin';
+import { onAuthStateChanged } from 'firebase/auth';
+import { resolveAdminRole } from '@/lib/firebase/auth';
+import { getFirebaseAuth } from '@/lib/firebase/client';
+import { isFirebaseConfigured } from '@/lib/firebase/config';
+import type { AdminRole } from '@/config/admins';
 
 interface UseAdminAuthResult {
   loading: boolean;
   authorized: boolean;
   role: AdminRole | null;
   userId: string | null;
+  configured: boolean;
 }
 
 export function useAdminAuth(requiredRole?: AdminRole): UseAdminAuthResult {
@@ -24,66 +24,34 @@ export function useAdminAuth(requiredRole?: AdminRole): UseAdminAuthResult {
   const [authorized, setAuthorized] = useState(false);
   const [role, setRole] = useState<AdminRole | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const router = useRouter();
+  const configured = isFirebaseConfigured();
 
   useEffect(() => {
-    async function checkAuth() {
-      // If Supabase is not configured, allow access for development
-      if (!isSupabaseConfigured()) {
-        setAuthorized(true);
-        setRole('super_admin');
+    if (!configured) {
+      setAuthorized(true);
+      setRole('super_admin');
+      setUserId(null);
+      setLoading(false);
+      return;
+    }
+
+    const unsubscribe = onAuthStateChanged(getFirebaseAuth(), async (user) => {
+      if (!user) {
+        setAuthorized(false);
+        setRole(null);
+        setUserId(null);
         setLoading(false);
         return;
       }
 
       try {
-        const supabase = createClient();
+        const userRole = await resolveAdminRole(user);
+        setUserId(user.uid);
 
-        // Check if user is authenticated
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-        if (authError || !user) {
+        if (!userRole || (requiredRole === 'super_admin' && userRole !== 'super_admin')) {
+          setRole(userRole);
           setAuthorized(false);
           setLoading(false);
-          router.push('/');
-          return;
-        }
-
-        setUserId(user.id);
-
-        // Check user has admin role
-        const { data: memberships, error: membershipError } = await supabase
-          .from('user_membership')
-          .select('role')
-          .eq('user_id', user.id);
-
-        if (membershipError) {
-          console.error('Error checking memberships:', membershipError);
-          setAuthorized(false);
-          setLoading(false);
-          router.push('/');
-          return;
-        }
-
-        // Check if user has required role
-        const adminMembership = memberships?.find((m: { role: string }) =>
-          m.role === 'content_manager' || m.role === 'super_admin'
-        ) as { role: string } | undefined;
-
-        if (!adminMembership) {
-          setAuthorized(false);
-          setLoading(false);
-          router.push('/');
-          return;
-        }
-
-        const userRole = adminMembership.role as AdminRole;
-
-        // If specific role is required, check for it
-        if (requiredRole === 'super_admin' && userRole !== 'super_admin') {
-          setAuthorized(false);
-          setLoading(false);
-          router.push('/admin');
           return;
         }
 
@@ -94,12 +62,11 @@ export function useAdminAuth(requiredRole?: AdminRole): UseAdminAuthResult {
         console.error('Auth check error:', err);
         setAuthorized(false);
         setLoading(false);
-        router.push('/');
       }
-    }
+    });
 
-    checkAuth();
-  }, [router, requiredRole]);
+    return unsubscribe;
+  }, [configured, requiredRole]);
 
-  return { loading, authorized, role, userId };
+  return { loading, authorized, role, userId, configured };
 }

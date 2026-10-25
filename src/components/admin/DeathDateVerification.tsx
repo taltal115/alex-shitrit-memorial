@@ -2,21 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle, Calendar } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { defaultMemorial, getMemorial, verifyMemorialDeathDate, type MemorialRecord } from '@/lib/firebase/data';
+import { isFirebaseConfigured } from '@/lib/firebase/config';
 
-interface MemorialData {
-  id: string;
-  gregorian_death_date: string;
-  death_time_relative_to_sunset: 'pending' | 'before_sunset' | 'after_sunset';
-  death_date_verified: boolean;
-  hebrew_date_before_sunset_day: number;
-  hebrew_date_before_sunset_month: string;
-  hebrew_date_before_sunset_year: number;
-  hebrew_date_after_sunset_day: number;
-  hebrew_date_after_sunset_month: string;
-  hebrew_date_after_sunset_year: number;
-  death_date_verified_at: string | null;
-}
+type MemorialData = MemorialRecord;
 
 export default function DeathDateVerification() {
   const [memorial, setMemorial] = useState<MemorialData | null>(null);
@@ -31,14 +20,11 @@ export default function DeathDateVerification() {
 
   const fetchMemorialData = async () => {
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('memorial')
-        .select('*')
-        .single();
-
-      if (error) throw error;
-      setMemorial(data);
+      if (!isFirebaseConfigured()) {
+        setMemorial(defaultMemorial);
+        return;
+      }
+      setMemorial(await getMemorial());
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -54,36 +40,11 @@ export default function DeathDateVerification() {
     setSuccess(false);
 
     try {
-      const supabase = createClient();
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        throw new Error('Not authenticated');
+      if (!isFirebaseConfigured()) {
+        throw new Error('Firebase אינו מוגדר');
       }
 
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      const response = await fetch(`${supabaseUrl}/functions/v1/verify-death-date`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          death_time_relative_to_sunset: choice,
-          hebrew_date_before_sunset_day: memorial.hebrew_date_before_sunset_day,
-          hebrew_date_before_sunset_month: memorial.hebrew_date_before_sunset_month,
-          hebrew_date_before_sunset_year: memorial.hebrew_date_before_sunset_year,
-          hebrew_date_after_sunset_day: memorial.hebrew_date_after_sunset_day,
-          hebrew_date_after_sunset_month: memorial.hebrew_date_after_sunset_month,
-          hebrew_date_after_sunset_year: memorial.hebrew_date_after_sunset_year,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Verification failed');
-      }
-
+      await verifyMemorialDeathDate(choice, memorial);
       setSuccess(true);
       await fetchMemorialData();
     } catch (err) {

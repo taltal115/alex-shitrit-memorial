@@ -14,11 +14,10 @@
   },
   "dependencies": {
     "@hebcal/core": "^5.4.0",
-    "@supabase/auth-helpers-nextjs": "^0.10.0",
-    "@supabase/supabase-js": "^2.43.0",
     "clsx": "^2.1.0",
     "date-fns": "^3.6.0",
     "date-fns-tz": "^3.1.0",
+    "firebase": "^11.10.0",
     "ics": "^3.7.0",
     "lucide-react": "^0.378.0",
     "next": "^14.2.0",

@@ -1,8 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { useAdminAuth } from '@/hooks/useAdminAuth';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
+import AdminSignIn from '@/components/admin/AdminSignIn';
 import { 
   User, 
   FileText, 
@@ -15,7 +17,13 @@ import {
   Download
 } from 'lucide-react';
 
-const adminSections = [
+const adminSections: Array<{
+  id: string;
+  icon: typeof User;
+  title: string;
+  description: string;
+  href?: string;
+}> = [
   {
     id: 'users',
     icon: User,
@@ -45,6 +53,7 @@ const adminSections = [
     icon: Calendar,
     title: 'תפילות ואזכרה',
     description: 'ניהול תפילות, תאריך אזכרה ושעות אירוע',
+    href: '/admin/prayers',
   },
   {
     id: 'settings',
@@ -90,17 +99,10 @@ export default function AdminPage() {
         <main className="min-h-screen bg-background py-12">
           <div className="container mx-auto px-4">
             <div className="max-w-2xl mx-auto">
-              <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-8 text-center">
-                <Shield className="mx-auto mb-4 text-amber-600" size={48} />
-                <h2 className="text-2xl font-bold mb-4 text-amber-900">
-                  נדרשת הזדהות
-                </h2>
-                <p className="text-amber-800 mb-6">
-                  דף זה מיועד למנהלי האתר בלבד.
-                  <br />
-                  יש להתחבר כדי לגשת לאזור הניהול.
-                </p>
-              </div>
+              <AdminSignIn
+                title="נדרשת הזדהות"
+                message="דף זה מיועד למנהלי האתר בלבד. יש להתחבר כדי לגשת לאזור הניהול."
+              />
             </div>
           </div>
         </main>
@@ -136,24 +138,36 @@ export default function AdminPage() {
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {adminSections.map((section) => {
                   const Icon = section.icon;
-                  return (
-                    <div
-                      key={section.id}
-                      className="bg-linen p-6 rounded-lg shadow-md hover:shadow-lg transition-shadow cursor-not-allowed opacity-60"
-                    >
-                      <div className="flex items-start gap-4">
-                        <div className="p-3 bg-sand/20 rounded-lg">
-                          <Icon className="text-sand" size={24} />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold mb-1">
-                            {section.title}
-                          </h3>
-                          <p className="text-sm text-gray-600">
-                            {section.description}
-                          </p>
-                        </div>
+                  const className = `bg-linen p-6 rounded-lg shadow-md transition-shadow ${
+                    section.href ? 'hover:shadow-lg' : 'cursor-not-allowed opacity-60'
+                  }`;
+                  const body = (
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 bg-sand/20 rounded-lg">
+                        <Icon className="text-sand" size={24} />
                       </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold mb-1">
+                          {section.title}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          {section.description}
+                        </p>
+                      </div>
+                    </div>
+                  );
+
+                  if (section.href) {
+                    return (
+                      <Link key={section.id} href={section.href} className={className}>
+                        {body}
+                      </Link>
+                    );
+                  }
+
+                  return (
+                    <div key={section.id} className={className}>
+                      {body}
                     </div>
                   );
                 })}
