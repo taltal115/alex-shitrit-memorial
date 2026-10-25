@@ -1,10 +1,31 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function allowlisted() {
+      return signedIn() && request.auth.token.email == 'taltal115@gmail.com';
+    }
+
+    function roleDoc() {
+      return firestore.get(/databases/(default)/documents/roles/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return allowlisted()
+        || (signedIn()
+          && firestore.exists(/databases/(default)/documents/roles/$(request.auth.uid))
+          && (roleDoc().role == 'super_admin' || roleDoc().role == 'content_manager'));
+    }
+
     match /media/{allPaths=**} {
       allow read: if true;
-      allow write: if request.auth != null
-        && request.auth.token.email == 'taltal115@gmail.com';
+      allow create, update: if isAdmin()
+        && request.resource.size < 15 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|video/.*');
+      allow delete: if isAdmin();
     }
   }
 }

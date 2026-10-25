@@ -1,8 +1,25 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import ShareButtons from './ShareButtons';
+import { defaultSettings, loadSettings } from '@/lib/firebase/cms';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const [aboutText, setAboutText] = useState(defaultSettings.aboutText);
+  const [contactText, setContactText] = useState(defaultSettings.contactText);
+  const [privacyText, setPrivacyText] = useState(defaultSettings.privacyText);
+
+  useEffect(() => {
+    loadSettings()
+      .then((settings) => {
+        setAboutText(settings.aboutText);
+        setContactText(settings.contactText);
+        setPrivacyText(settings.privacyText);
+      })
+      .catch(() => undefined);
+  }, []);
 
   return (
     <footer className="bg-linen mt-16 py-8">
@@ -19,9 +36,7 @@ export default function Footer() {
           {/* About */}
           <div>
             <h3 className="font-semibold mb-3">אודות</h3>
-            <p className="text-sm text-gray-700">
-              אתר הנצחה מקוון לזכרו של אלכס שטרית ז"ל
-            </p>
+            <p className="text-sm text-gray-700">{aboutText}</p>
           </div>
 
           {/* Quick Links */}
@@ -49,12 +64,8 @@ export default function Footer() {
           {/* Contact & Privacy */}
           <div>
             <h3 className="font-semibold mb-3">פרטיות ויצירת קשר</h3>
-            <p className="text-sm text-gray-700">
-              לשאלות או לעדכון פרטים, אנא פנו למשפחה.
-            </p>
-            <p className="text-xs text-gray-600 mt-4">
-              כל התכנים באתר מוגנים ומנוהלים על ידי המשפחה.
-            </p>
+            <p className="text-sm text-gray-700">{contactText}</p>
+            <p className="text-xs text-gray-600 mt-4">{privacyText}</p>
           </div>
         </div>
 

@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import YahrzeitCountdown from '@/components/YahrzeitCountdown';
+import { HomeIntro, HomePortrait, HomeQuote, RecentMemories } from '@/components/content/PublishedContent';
 import { BookOpen, Heart, ImageIcon } from 'lucide-react';
 
 export default function HomePage() {
@@ -16,13 +16,7 @@ export default function HomePage() {
             <div className="grid md:grid-cols-2 gap-12 items-center">
               {/* Portrait */}
               <div className="flex justify-center">
-                <div className="relative w-64 h-64 md:w-80 md:h-80 bg-sand/20 rounded-lg shadow-lg flex items-center justify-center">
-                  {/* PLACEHOLDER: Family to provide portrait photo */}
-                  <p className="text-center text-sand px-8">
-                    תמונת פורטרט<br />
-                    יסופקו על ידי המשפחה
-                  </p>
-                </div>
+                <HomePortrait />
               </div>
 
               {/* Name and Info */}
@@ -51,10 +45,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Quote Placeholder */}
-                <blockquote className="text-xl italic text-gray-700 mb-6 border-r-4 border-sand pr-4">
-                  ציטוט או פסוק לזכרו<br />
-                  <span className="text-sm not-italic">(יסופק על ידי המשפחה)</span>
-                </blockquote>
+                <HomeQuote />
 
                 {/* CTA Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start">
@@ -80,11 +71,7 @@ export default function HomePage() {
         <section className="py-12 bg-background">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto">
-              <p className="text-lg leading-relaxed text-center">
-                <span className="italic text-gray-600">
-                  [טקסט הקדמה על אלכס - יסופק על ידי המשפחה]
-                </span>
-              </p>
+              <HomeIntro />
             </div>
           </div>
         </section>
@@ -149,18 +136,7 @@ export default function HomePage() {
             <h2 className="text-3xl font-bold text-center mb-8">זכרונות אחרונים</h2>
             
             <div className="max-w-4xl mx-auto">
-              <div className="bg-background p-6 rounded-lg shadow-md text-center">
-                <p className="text-gray-600 italic">
-                  זכרונות שיאושרו על ידי המשפחה יופיעו כאן.<br />
-                  בינתיים, אתם מוזמנים לשתף זיכרון משלכם.
-                </p>
-                <Link
-                  href="/memories"
-                  className="inline-block mt-4 text-sand hover:underline font-medium"
-                >
-                  שיתוף זיכרון ←
-                </Link>
-              </div>
+              <RecentMemories />
             </div>
           </div>
         </section>

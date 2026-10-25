@@ -27,6 +27,14 @@ service cloud.firestore {
           && roleData().role == 'content_manager');
     }
 
+    function invitePath() {
+      return /databases/$(database)/documents/adminInvites/$(request.auth.token.email.lower());
+    }
+
+    function inviteExists() {
+      return signedIn() && request.auth.token.email != null && exists(invitePath());
+    }
+
     match /prayerSections/{id} {
       allow read: if true;
       allow create, update, delete: if isSuperAdmin();
@@ -37,21 +45,75 @@ service cloud.firestore {
       allow create, update: if isSuperAdmin();
     }
 
+    match /siteContent/{id} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /settings/{id} {
+      allow read: if true;
+      allow create, update: if isAdmin();
+    }
+
+    match /lifeChapters/{id} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /legacySections/{id} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /albums/{id} {
+      allow read: if resource.data.published == true || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /mediaAssets/{id} {
+      allow read: if resource.data.approvalStatus == 'approved' || isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
     match /roles/{uid} {
       allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow create, update, delete: if isSuperAdmin();
+      allow create: if isSuperAdmin()
+        || (signedIn()
+          && request.auth.uid == uid
+          && inviteExists()
+          && request.resource.data.role == get(invitePath()).data.role
+          && request.resource.data.email == request.auth.token.email.lower()
+          && (request.resource.data.role == 'super_admin' || request.resource.data.role == 'content_manager'));
+      allow update, delete: if isSuperAdmin();
+    }
+
+    match /adminInvites/{emailId} {
+      allow read: if isSuperAdmin()
+        || (signedIn() && request.auth.token.email.lower() == emailId);
+      allow create, update: if isSuperAdmin();
+      allow delete: if isSuperAdmin()
+        || (signedIn() && request.auth.token.email.lower() == emailId);
     }
 
     match /auditLog/{id} {
       allow read: if isAdmin();
-      allow create: if isSuperAdmin();
+      allow create: if isAdmin() || isSuperAdmin();
     }
 
     match /stories/{id} {
-      allow read: if resource.data.approval_status == 'approved' || isAdmin();
-      allow create: if signedIn()
-        && request.resource.data.approval_status == 'pending'
-        && request.resource.data.author_name is string;
+      allow read: if resource.data.approvalStatus == 'approved' || isAdmin();
+      allow create: if request.resource.data.approvalStatus == 'pending'
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() > 0
+        && request.resource.data.authorName.size() < 120
+        && request.resource.data.authorRelation is string
+        && request.resource.data.authorRelation.size() < 120
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() < 200
+        && request.resource.data.content is string
+        && request.resource.data.content.size() > 0
+        && request.resource.data.content.size() < 8000;
       allow update, delete: if isAdmin();
     }
   }
