@@ -7,6 +7,7 @@ import {
   getDocs,
   query,
   setDoc,
+  updateDoc,
   where,
   type Timestamp,
 } from 'firebase/firestore';
@@ -260,13 +261,132 @@ export async function loadHome(): Promise<HomeContent> {
   };
 }
 
-export async function uploadPortrait(file: File): Promise<string> {
+export const HOME_CAROUSEL_ALBUM = 'home-carousel';
+
+function imageContentType(file: File): string {
+  if (file.type.startsWith('image/') || file.type.startsWith('video/')) return file.type;
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.png')) return 'image/png';
+  if (name.endsWith('.webp')) return 'image/webp';
+  if (name.endsWith('.gif')) return 'image/gif';
+  if (name.endsWith('.mp4')) return 'video/mp4';
+  if (name.endsWith('.webm')) return 'video/webm';
+  return 'image/jpeg';
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('storage-timeout')), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      }
+    );
+  });
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(new Error('קריאת התמונה נכשלה'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function compressImageFile(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  let maxEdge = 1600;
+
+  try {
+    for (let scalePass = 0; scalePass < 3; scalePass += 1) {
+      const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height, 1));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('לא הצלחנו לעבד את התמונה');
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+      let quality = 0.82;
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+        if (blob) {
+          const dataUrl = await blobToDataUrl(blob);
+          // A Firestore document is limited to 1 MiB, and base64 is larger than the file.
+          if (dataUrl.length < 900_000) return dataUrl;
+        }
+        quality = Math.max(0.35, quality - 0.1);
+      }
+      maxEdge = Math.round(maxEdge * 0.65);
+    }
+  } finally {
+    bitmap.close();
+  }
+
+  throw new Error('התמונה גדולה מדי אחרי דחיסה. נסו תמונה קטנה יותר.');
+}
+
+async function storeImageFile(file: File, pathPrefix: string): Promise<{ url: string; storagePath: string }> {
+  const contentType = imageContentType(file);
   const id = crypto.randomUUID();
-  const safeName = file.name.replace(/[^\w.\-]+/g, '_');
-  const storagePath = `media/portrait/${id}-${safeName}`;
-  const storageRef = ref(getFirebaseStorage(), storagePath);
-  await uploadBytes(storageRef, file, { contentType: file.type || 'image/jpeg' });
-  return getDownloadURL(storageRef);
+  const storagePath = `media/${pathPrefix}/${id}`;
+  try {
+    const storageRef = ref(getFirebaseStorage(), storagePath);
+    await withTimeout(uploadBytes(storageRef, file, { contentType }), 12000);
+    const url = await getDownloadURL(storageRef);
+    return { url, storagePath };
+  } catch (error) {
+    if (contentType.startsWith('video/')) {
+      throw new Error('העלאת סרטונים דורשת Firebase Storage. בקונסול Firebase פתחו Storage ולחצו Get Started.');
+    }
+    console.error('storage upload failed, saving a compressed copy', error);
+    const url = await compressImageFile(file);
+    return { url, storagePath: '' };
+  }
+}
+
+export async function uploadPortrait(file: File): Promise<string> {
+  const storedFile = await storeImageFile(file, 'portrait');
+  return storedFile.url;
+}
+
+const copyListeners = new Set<() => void>();
+let copyCache: Record<string, string> | null = null;
+
+export function subscribeSiteCopy(listener: () => void): () => void {
+  copyListeners.add(listener);
+  return () => copyListeners.delete(listener);
+}
+
+export function readSiteCopyCache(): Record<string, string> | null {
+  return copyCache;
+}
+
+export async function loadSiteCopy(): Promise<Record<string, string>> {
+  if (copyCache) return copyCache;
+  if (!isFirebaseConfigured()) {
+    copyCache = {};
+    return copyCache;
+  }
+  const snap = await getDoc(doc(getFirebaseDb(), 'siteContent', 'texts'));
+  const values = snap.data()?.values;
+  copyCache = values && typeof values === 'object' ? (values as Record<string, string>) : {};
+  return copyCache;
+}
+
+export async function saveSiteCopyValue(id: string, value: string): Promise<void> {
+  const ref = doc(getFirebaseDb(), 'siteContent', 'texts');
+  await setDoc(ref, { updatedAt: new Date().toISOString() }, { merge: true });
+  await updateDoc(ref, { [`values.${id}`]: value });
+  copyCache = { ...(copyCache ?? {}), [id]: value };
+  copyListeners.forEach((listener) => listener());
+  await writeAudit('save_home', 'siteContent', id, value.slice(0, 80));
 }
 
 export async function saveHome(content: HomeContent): Promise<void> {
@@ -320,6 +440,13 @@ export async function saveLifeChapter(chapter: LifeChapter): Promise<void> {
   await writeAudit('save_chapter', 'lifeChapters', chapter.id, chapter.title);
 }
 
+export async function saveLifeChapters(chapters: LifeChapter[]): Promise<void> {
+  const db = getFirebaseDb();
+  await Promise.all(chapters.map((chapter) => setDoc(doc(db, 'lifeChapters', chapter.id), chapter)));
+  await markCustom('lifeStory');
+  await writeAudit('save_chapter', 'lifeChapters', 'all', `${chapters.length} פרקים`);
+}
+
 export async function deleteLifeChapter(id: string): Promise<void> {
   await deleteDoc(doc(getFirebaseDb(), 'lifeChapters', id));
   await markCustom('lifeStory');
@@ -359,6 +486,13 @@ export async function saveLegacySection(section: LegacySection): Promise<void> {
   await writeAudit('save_legacy', 'legacySections', section.id, section.title);
 }
 
+export async function saveLegacySections(sections: LegacySection[]): Promise<void> {
+  const db = getFirebaseDb();
+  await Promise.all(sections.map((section) => setDoc(doc(db, 'legacySections', section.id), section)));
+  await markCustom('legacy');
+  await writeAudit('save_legacy', 'legacySections', 'all', `${sections.length} קטגוריות`);
+}
+
 export async function deleteLegacySection(id: string): Promise<void> {
   await deleteDoc(doc(getFirebaseDb(), 'legacySections', id));
   await markCustom('legacy');
@@ -392,6 +526,13 @@ export async function saveAlbum(album: Album): Promise<void> {
   await setDoc(doc(getFirebaseDb(), 'albums', album.id), album);
   await markCustom('gallery');
   await writeAudit('save_album', 'albums', album.id, album.title);
+}
+
+export async function saveAlbums(albums: Album[]): Promise<void> {
+  const db = getFirebaseDb();
+  await Promise.all(albums.map((album) => setDoc(doc(db, 'albums', album.id), album)));
+  await markCustom('gallery');
+  await writeAudit('save_album', 'albums', 'all', `${albums.length} אלבומים`);
 }
 
 export async function deleteAlbum(id: string): Promise<void> {
@@ -437,18 +578,14 @@ export async function listApprovedMedia(): Promise<MediaAsset[]> {
 
 export async function uploadMediaFile(albumId: string, file: File): Promise<MediaAsset> {
   const id = crypto.randomUUID();
-  const safeName = file.name.replace(/[^\w.\-]+/g, '_');
-  const storagePath = `media/${albumId}/${id}-${safeName}`;
-  const storageRef = ref(getFirebaseStorage(), storagePath);
-  await uploadBytes(storageRef, file, { contentType: file.type || 'application/octet-stream' });
-  const url = await getDownloadURL(storageRef);
+  const storedFile = await storeImageFile(file, `${albumId}/${id}`);
   const asset: MediaAsset = {
     id,
     albumId,
-    url,
-    storagePath,
+    url: storedFile.url,
+    storagePath: storedFile.storagePath,
     caption: '',
-    fileType: file.type.startsWith('video/') ? 'video' : 'image',
+    fileType: imageContentType(file).startsWith('video/') ? 'video' : 'image',
     approvalStatus: 'approved',
     createdAt: new Date().toISOString(),
   };
@@ -505,6 +642,11 @@ export async function submitStory(input: Omit<Story, 'id' | 'approvalStatus' | '
     approvalStatus: 'pending',
     createdAt,
   });
+}
+
+export async function updateStoryText(id: string, patch: { title: string; content: string }): Promise<void> {
+  await setDoc(doc(getFirebaseDb(), 'stories', id), patch, { merge: true });
+  await writeAudit('review_story', 'stories', id, patch.title);
 }
 
 export async function reviewStory(id: string, approvalStatus: Story['approvalStatus']): Promise<void> {

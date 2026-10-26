@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { calculateNextYahrzeit, type YahrzeitInfo } from '@/utils/yahrzeit';
 import { Calendar } from 'lucide-react';
 import Link from 'next/link';
+import { CopyText } from '@/components/edit/EditableText';
 
 interface YahrzeitCountdownProps {
   hebrewDay: number;
@@ -47,7 +48,9 @@ export default function YahrzeitCountdown({
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto text-center">
             <Calendar className="mx-auto mb-4 text-sand" size={48} />
-            <h2 className="text-3xl font-bold mb-4">האזכרה הבאה</h2>
+            <h2 className="text-3xl font-bold mb-4">
+            <CopyText id="yahrzeit.title" fallback="האזכרה הבאה" />
+          </h2>
             <div className="bg-background p-6 rounded-lg shadow-md">
               <div className="animate-pulse">
                 <div className="h-4 bg-sand/20 rounded mb-4"></div>
@@ -66,7 +69,9 @@ export default function YahrzeitCountdown({
       <div className="container mx-auto px-4">
         <div className="max-w-2xl mx-auto text-center">
           <Calendar className="mx-auto mb-4 text-sand" size={48} />
-          <h2 className="text-3xl font-bold mb-4">האזכרה הבאה</h2>
+          <h2 className="text-3xl font-bold mb-4">
+            <CopyText id="yahrzeit.title" fallback="האזכרה הבאה" />
+          </h2>
           
           <div className="bg-background p-8 rounded-lg shadow-md">
             {yahrzeit.isToday ? (
@@ -82,7 +87,9 @@ export default function YahrzeitCountdown({
             
             {/* Hebrew Date */}
             <div className="mb-6">
-              <p className="text-sm text-gray-600 mb-2">תאריך עברי</p>
+              <p className="text-sm text-gray-600 mb-2">
+                <CopyText id="yahrzeit.hebrewLabel" fallback="תאריך עברי" />
+              </p>
               <p className="text-3xl font-bold text-sand mb-1">
                 {yahrzeit.hebrewDate}
               </p>
@@ -93,7 +100,9 @@ export default function YahrzeitCountdown({
             
             {/* Gregorian Date */}
             <div className="mb-6">
-              <p className="text-sm text-gray-600 mb-2">תאריך לועזי</p>
+              <p className="text-sm text-gray-600 mb-2">
+                <CopyText id="yahrzeit.gregorianLabel" fallback="תאריך לועזי" />
+              </p>
               <p className="text-xl font-semibold">
                 {yahrzeit.gregorianFormatted}
               </p>
@@ -109,14 +118,18 @@ export default function YahrzeitCountdown({
             {/* Countdown */}
             {!yahrzeit.isToday && (
               <div className="mb-8">
-                <p className="text-sm text-gray-600 mb-4">ספירה לאחור</p>
+                <p className="text-sm text-gray-600 mb-4">
+                  <CopyText id="yahrzeit.countdown" fallback="ספירה לאחור" />
+                </p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-md mx-auto">
                   {/* Days */}
                   <div className="bg-linen p-3 sm:p-4 rounded-lg">
                     <p className="text-2xl sm:text-3xl font-bold text-sand">
                       {yahrzeit.daysUntil}
                     </p>
-                    <p className="text-xs sm:text-sm text-gray-600">ימים</p>
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      <CopyText id="yahrzeit.days" fallback="ימים" />
+                    </p>
                   </div>
                   
                   {/* Hours */}
@@ -124,7 +137,9 @@ export default function YahrzeitCountdown({
                     <p className="text-2xl sm:text-3xl font-bold text-sand">
                       {yahrzeit.hoursUntil}
                     </p>
-                    <p className="text-xs sm:text-sm text-gray-600">שעות</p>
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      <CopyText id="yahrzeit.hours" fallback="שעות" />
+                    </p>
                   </div>
                   
                   {/* Minutes */}
@@ -132,7 +147,9 @@ export default function YahrzeitCountdown({
                     <p className="text-2xl sm:text-3xl font-bold text-sand">
                       {yahrzeit.minutesUntil}
                     </p>
-                    <p className="text-xs sm:text-sm text-gray-600">דקות</p>
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      <CopyText id="yahrzeit.minutes" fallback="דקות" />
+                    </p>
                   </div>
                   
                   {/* Seconds */}
@@ -140,7 +157,9 @@ export default function YahrzeitCountdown({
                     <p className="text-2xl sm:text-3xl font-bold text-sand">
                       {yahrzeit.secondsUntil}
                     </p>
-                    <p className="text-xs sm:text-sm text-gray-600">שניות</p>
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      <CopyText id="yahrzeit.seconds" fallback="שניות" />
+                    </p>
                   </div>
                 </div>
               </div>
@@ -149,10 +168,10 @@ export default function YahrzeitCountdown({
             {/* CTA */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link
-                href="/prayers"
+                href="/#prayers"
                 className="bg-sand text-white px-6 py-3 rounded-lg hover:opacity-90 transition-opacity font-medium"
               >
-                קריאת תפילות לעילוי נשמתו
+                <CopyText id="yahrzeit.prayersButton" fallback="קריאת תפילות לעילוי נשמתו" />
               </Link>
             </div>
           </div>

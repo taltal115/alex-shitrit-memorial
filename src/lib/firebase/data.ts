@@ -218,3 +218,16 @@ export async function updatePrayerVerification(
   });
   await writeAudit('update_prayer', 'prayerSections', sectionId, newStatus);
 }
+
+export async function updatePrayerContent(
+  sectionId: string,
+  patch: { title: string; verses: string[] }
+): Promise<void> {
+  await seedBundledPrayersIfEmpty();
+  await updateDoc(doc(getFirebaseDb(), 'prayerSections', sectionId), {
+    title: patch.title,
+    verses: patch.verses,
+    hebrew_text: patch.verses.join('\n'),
+  });
+  await writeAudit('update_prayer', 'prayerSections', sectionId, patch.title);
+}

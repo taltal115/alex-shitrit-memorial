@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { AdminModeProvider } from '@/components/edit/EditableText';
 
 export const metadata: Metadata = {
   title: 'אלכס שטרית - לזכרו',
@@ -16,7 +17,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="he" dir="rtl">
-      <body>{children}</body>
+      <body>
+        <AdminModeProvider>{children}</AdminModeProvider>
+      </body>
     </html>
   );
 }

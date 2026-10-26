@@ -2,18 +2,28 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { BookOpen, Heart, ImageIcon, Lightbulb, MessageCircle, User } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, Heart, ImageIcon, Lightbulb, MessageCircle, User } from 'lucide-react';
+import { EditableText, useIsAdmin } from '@/components/edit/EditableText';
 import {
+  HOME_CAROUSEL_ALBUM,
   defaultAlbums,
   defaultHome,
   defaultLifeChapters,
   defaultLegacySections,
+  deleteMedia,
   listApprovedMedia,
   listStories,
   loadHome,
   loadPublishedAlbums,
   loadPublishedLegacy,
   loadPublishedLifeChapters,
+  saveAlbums,
+  saveHome,
+  saveLegacySections,
+  saveLifeChapters,
+  updateStoryText,
+  uploadMediaFile,
+  type Album,
   type LegacySection,
   type LifeChapter,
   type MediaAsset,
@@ -27,63 +37,179 @@ const legacyIcons = {
   traditions: BookOpen,
 };
 
-function useAsync<T>(loader: () => Promise<T>, initial: T): T {
-  const [value, setValue] = useState(initial);
-  useEffect(() => {
-    let active = true;
-    loader()
-      .then((next) => {
-        if (active) setValue(next);
-      })
-      .catch((error) => console.error(error));
-    return () => {
-      active = false;
-    };
-    // The loader reads published content once when the section appears.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return value;
-}
+export function HomeCarousel() {
+  const isAdmin = useIsAdmin();
+  const [slides, setSlides] = useState<MediaAsset[]>([]);
+  const [index, setIndex] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
-export function HomePortrait() {
-  const home = useAsync(loadHome, defaultHome);
-  if (!home.portraitUrl) {
-    return (
-      <div className="relative w-64 h-64 md:w-80 md:h-80 bg-sand/20 rounded-lg shadow-lg flex items-center justify-center">
-        <p className="text-center text-sand px-8">
-          תמונת פורטרט
-          <br />
-          יסופקו על ידי המשפחה
-        </p>
-      </div>
-    );
+  async function refresh() {
+    const media = await listApprovedMedia();
+    const homeSlides = media
+      .filter((item) => item.albumId === HOME_CAROUSEL_ALBUM && item.fileType === 'image')
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    if (homeSlides.length === 0) {
+      const home = await loadHome();
+      if (home.portraitUrl) {
+        setSlides([
+          {
+            id: 'portrait',
+            albumId: HOME_CAROUSEL_ALBUM,
+            url: home.portraitUrl,
+            storagePath: '',
+            caption: '',
+            fileType: 'image',
+            approvalStatus: 'approved',
+            createdAt: '',
+          },
+        ]);
+        return;
+      }
+    }
+    setSlides(homeSlides);
+    setIndex((current) => Math.min(current, Math.max(homeSlides.length - 1, 0)));
   }
 
+  useEffect(() => {
+    refresh().catch((loadError) => console.error(loadError));
+  }, []);
+
+  useEffect(() => {
+    if (slides.length < 2) return;
+    const timer = window.setInterval(() => {
+      setIndex((current) => (current + 1) % slides.length);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [slides.length]);
+
+  async function addImages(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    if (files.length === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      for (const file of files) {
+        await uploadMediaFile(HOME_CAROUSEL_ALBUM, file);
+      }
+      await refresh();
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : 'העלאת התמונה נכשלה');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeCurrent() {
+    const slide = slides[index];
+    if (!slide || slide.id === 'portrait') return;
+    setBusy(true);
+    try {
+      await deleteMedia(slide);
+      await refresh();
+    } catch {
+      setError('מחיקת התמונה נכשלה');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const slide = slides[index];
+
   return (
-    <img
-      src={home.portraitUrl}
-      alt="אלכס שטרית"
-      className="w-64 h-64 md:w-80 md:h-80 object-cover rounded-lg shadow-lg"
-    />
+    <div className="w-full max-w-xl">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-sand/20 shadow-lg">
+        {slide ? (
+          <img src={slide.url} alt={slide.caption || 'תמונה ראשית'} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full items-center justify-center px-8 text-center text-sand">
+            תמונות יופיעו כאן
+            <br />
+            אחרי העלאה על ידי המשפחה
+          </div>
+        )}
+        {slides.length > 1 && (
+          <>
+            <button type="button" aria-label="תמונה קודמת" onClick={() => setIndex((current) => (current - 1 + slides.length) % slides.length)} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2">
+              <ChevronRight size={20} />
+            </button>
+            <button type="button" aria-label="תמונה הבאה" onClick={() => setIndex((current) => (current + 1) % slides.length)} className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/80 p-2">
+              <ChevronLeft size={20} />
+            </button>
+            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-2">
+              {slides.map((item, dot) => (
+                <button key={item.id} type="button" aria-label={`תמונה ${dot + 1}`} onClick={() => setIndex(dot)} className={`h-2.5 w-2.5 rounded-full ${dot === index ? 'bg-white' : 'bg-white/50'}`} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      {isAdmin && (
+        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+          <label className="cursor-pointer rounded-lg bg-sand px-4 py-2 text-white">
+            {busy ? 'מעלה...' : 'הוספת תמונות'}
+            <input type="file" accept="image/*" multiple className="hidden" onChange={addImages} disabled={busy} />
+          </label>
+          {slide && slide.id !== 'portrait' && (
+            <button type="button" onClick={removeCurrent} className="text-red-700">
+              הסרת התמונה הנוכחית
+            </button>
+          )}
+          {error && <p className="w-full text-red-700">{error}</p>}
+        </div>
+      )}
+    </div>
   );
 }
 
 export function HomeQuote() {
-  const loaded = useAsync(loadHome, defaultHome);
+  const [home, setHome] = useState(defaultHome);
+  useEffect(() => {
+    loadHome().then(setHome).catch(() => undefined);
+  }, []);
   return (
-    <blockquote className="text-xl italic text-gray-700 mb-6 border-r-4 border-sand pr-4 whitespace-pre-wrap">
-      {loaded.quote}
-    </blockquote>
+    <EditableText
+      as="blockquote"
+      block
+      multiline
+      className="text-xl italic text-gray-700 mb-6 border-r-4 border-sand pr-4 whitespace-pre-wrap"
+      value={home.quote}
+      onSave={async (quote) => {
+        const next = { ...home, quote };
+        await saveHome(next);
+        setHome(next);
+      }}
+    />
   );
 }
 
 export function HomeIntro() {
-  const home = useAsync(loadHome, defaultHome);
-  return <p className="text-lg leading-relaxed text-center whitespace-pre-wrap">{home.intro}</p>;
+  const [home, setHome] = useState(defaultHome);
+  useEffect(() => {
+    loadHome().then(setHome).catch(() => undefined);
+  }, []);
+  return (
+    <EditableText
+      as="p"
+      block
+      multiline
+      className="text-lg leading-relaxed text-center whitespace-pre-wrap"
+      value={home.intro}
+      onSave={async (intro) => {
+        const next = { ...home, intro };
+        await saveHome(next);
+        setHome(next);
+      }}
+    />
+  );
 }
 
 export function RecentMemories() {
-  const stories = useAsync(() => listStories('approved'), [] as Story[]);
+  const [stories, setStories] = useState<Story[]>([]);
+  useEffect(() => {
+    listStories('approved').then(setStories).catch(() => undefined);
+  }, []);
   const latest = stories.slice(0, 3);
 
   if (latest.length === 0) {
@@ -94,7 +220,7 @@ export function RecentMemories() {
           <br />
           בינתיים, אתם מוזמנים לשתף זיכרון משלכם.
         </p>
-        <Link href="/memories" className="inline-block mt-4 text-sand hover:underline font-medium">
+        <Link href="/#memories" className="inline-block mt-4 text-sand hover:underline font-medium">
           שיתוף זיכרון ←
         </Link>
       </div>
@@ -109,7 +235,17 @@ export function RecentMemories() {
           <p className="text-sm text-gray-600 mb-3">
             {story.authorName} · {story.authorRelation}
           </p>
-          <p className="text-gray-700 whitespace-pre-wrap">{story.content}</p>
+          <EditableText
+            as="p"
+            block
+            multiline
+            className="text-gray-700 whitespace-pre-wrap"
+            value={story.content}
+            onSave={async (content) => {
+              await updateStoryText(story.id, { title: story.title, content });
+              setStories((current) => current.map((item) => (item.id === story.id ? { ...item, content } : item)));
+            }}
+          />
         </article>
       ))}
     </div>
@@ -117,77 +253,108 @@ export function RecentMemories() {
 }
 
 export function LifeStoryTimeline() {
-  const chapters = useAsync(loadPublishedLifeChapters, defaultLifeChapters);
+  const [chapters, setChapters] = useState(defaultLifeChapters);
+  useEffect(() => {
+    loadPublishedLifeChapters().then(setChapters).catch(() => undefined);
+  }, []);
+
+  async function updateChapter(id: string, patch: Partial<LifeChapter>) {
+    const next = chapters.map((chapter) => (chapter.id === id ? { ...chapter, ...patch } : chapter));
+    await saveLifeChapters(next);
+    setChapters(next);
+  }
+
   return (
     <div className="space-y-8">
       {chapters.map((chapter, index) => (
-        <ChapterCard key={chapter.id} chapter={chapter} last={index === chapters.length - 1} />
+        <div key={chapter.id} className="bg-linen p-6 rounded-lg shadow-md">
+          <div className="flex items-start gap-4">
+            <div className="flex flex-col items-center">
+              <div className="w-4 h-4 bg-sand rounded-full" />
+              {index < chapters.length - 1 && <div className="w-0.5 bg-sand/30 mt-2" style={{ minHeight: '60px' }} />}
+            </div>
+            <div className="flex-1 pb-4">
+              <h2 className="text-2xl font-bold mb-3">
+                <EditableText value={chapter.title} onSave={(title) => updateChapter(chapter.id, { title })} />
+              </h2>
+              <EditableText as="p" block multiline className="text-gray-700 whitespace-pre-wrap" value={chapter.body} onSave={(body) => updateChapter(chapter.id, { body })} />
+            </div>
+          </div>
+        </div>
       ))}
       {chapters.length === 0 && <p className="text-center text-gray-600">סיפור החיים יפורסם בקרוב.</p>}
     </div>
   );
 }
 
-function ChapterCard({ chapter, last }: { chapter: LifeChapter; last: boolean }) {
-  return (
-    <div className="bg-linen p-6 rounded-lg shadow-md">
-      <div className="flex items-start gap-4">
-        <div className="flex flex-col items-center">
-          <div className="w-4 h-4 bg-sand rounded-full" />
-          {!last && <div className="w-0.5 bg-sand/30 mt-2" style={{ minHeight: '60px' }} />}
-        </div>
-        <div className="flex-1 pb-4">
-          <h2 className="text-2xl font-bold mb-3">{chapter.title}</h2>
-          <p className="text-gray-700 whitespace-pre-wrap">{chapter.body}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export function LegacyContent() {
-  const sections = useAsync(loadPublishedLegacy, defaultLegacySections);
-  const regular = sections.filter((section) => section.kind !== 'message');
-  const messages = sections.filter((section) => section.kind === 'message');
+  const [sections, setSections] = useState(defaultLegacySections);
+  useEffect(() => {
+    loadPublishedLegacy().then(setSections).catch(() => undefined);
+  }, []);
+
+  async function updateSection(id: string, patch: Partial<LegacySection>) {
+    const next = sections.map((section) => (section.id === id ? { ...section, ...patch } : section));
+    await saveLegacySections(next);
+    setSections(next);
+  }
 
   return (
     <div className="space-y-8">
-      {regular.map((section) => (
-        <LegacyCard key={section.id} section={section} />
-      ))}
-      {messages.map((section) => (
-        <div key={section.id} className="bg-gradient-to-br from-sand/10 to-linen p-8 rounded-lg shadow-lg border-2 border-sand/20">
-          <h2 className="text-2xl font-bold mb-4 text-center">{section.title}</h2>
-          <p className="text-gray-700 text-center whitespace-pre-wrap">{section.body}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function LegacyCard({ section }: { section: LegacySection }) {
-  const Icon = legacyIcons[section.id as keyof typeof legacyIcons] ?? BookOpen;
-  return (
-    <div className="bg-linen p-8 rounded-lg shadow-md">
-      <div className="flex items-start gap-4 mb-4">
-        <div className="p-3 bg-sand/20 rounded-lg">
-          <Icon className="text-sand" size={32} />
-        </div>
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold mb-2">{section.title}</h2>
-          {section.description && <p className="text-gray-600">{section.description}</p>}
-        </div>
-      </div>
-      <div className="mr-16 p-6 bg-background rounded-lg">
-        <p className="text-gray-700 whitespace-pre-wrap">{section.body}</p>
-      </div>
+      {sections.map((section) => {
+        const Icon = legacyIcons[section.id as keyof typeof legacyIcons] ?? BookOpen;
+        const card = (
+          <>
+            <div className="flex items-start gap-4 mb-4">
+              <div className="p-3 bg-sand/20 rounded-lg">
+                <Icon className="text-sand" size={32} />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold mb-2">
+                  <EditableText value={section.title} onSave={(title) => updateSection(section.id, { title })} />
+                </h2>
+                <EditableText className="text-gray-600" value={section.description} onSave={(description) => updateSection(section.id, { description })} />
+              </div>
+            </div>
+            <div className={section.kind === 'message' ? '' : 'mr-16 p-6 bg-background rounded-lg'}>
+              <EditableText as="p" block multiline className="text-gray-700 whitespace-pre-wrap" value={section.body} onSave={(body) => updateSection(section.id, { body })} />
+            </div>
+          </>
+        );
+        if (section.kind === 'message') {
+          return (
+            <div key={section.id} className="bg-gradient-to-br from-sand/10 to-linen p-8 rounded-lg shadow-lg border-2 border-sand/20 text-center">
+              {card}
+            </div>
+          );
+        }
+        return (
+          <div key={section.id} className="bg-linen p-8 rounded-lg shadow-md">
+            {card}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
 export function GalleryGrid() {
-  const albums = useAsync(loadPublishedAlbums, defaultAlbums);
-  const media = useAsync(listApprovedMedia, [] as MediaAsset[]);
+  const [albums, setAlbums] = useState(defaultAlbums);
+  const [media, setMedia] = useState<MediaAsset[]>([]);
+  useEffect(() => {
+    Promise.all([loadPublishedAlbums(), listApprovedMedia()])
+      .then(([nextAlbums, nextMedia]) => {
+        setAlbums(nextAlbums);
+        setMedia(nextMedia);
+      })
+      .catch(() => undefined);
+  }, []);
+
+  async function updateAlbum(id: string, patch: Partial<Album>) {
+    const next = albums.map((album) => (album.id === id ? { ...album, ...patch } : album));
+    await saveAlbums(next);
+    setAlbums(next);
+  }
 
   if (albums.length === 0) {
     return <p className="text-center text-gray-600">הגלריה תפורסם בקרוב.</p>;
@@ -209,8 +376,10 @@ export function GalleryGrid() {
               <img src={items[0].url} alt={items[0].caption || album.title} className="w-full aspect-video object-cover" />
             )}
             <div className="p-6">
-              <h2 className="text-2xl font-bold mb-2">{album.title}</h2>
-              <p className="text-gray-700 mb-4">{album.description}</p>
+              <h2 className="text-2xl font-bold mb-2">
+                <EditableText value={album.title} onSave={(title) => updateAlbum(album.id, { title })} />
+              </h2>
+              <EditableText as="p" block className="text-gray-700 mb-4" value={album.description} onSave={(description) => updateAlbum(album.id, { description })} />
               {items.length === 0 ? (
                 <p className="text-sm text-gray-600 italic">תמונות יתווספו על ידי המשפחה</p>
               ) : (
@@ -233,7 +402,10 @@ export function GalleryGrid() {
 }
 
 export function PublishedStories() {
-  const stories = useAsync(() => listStories('approved'), [] as Story[]);
+  const [stories, setStories] = useState<Story[]>([]);
+  useEffect(() => {
+    listStories('approved').then(setStories).catch(() => undefined);
+  }, []);
 
   if (stories.length === 0) {
     return (
@@ -258,11 +430,29 @@ export function PublishedStories() {
               <User className="text-sand" size={24} />
             </div>
             <div>
-              <h3 className="text-xl font-semibold">{story.title}</h3>
+              <h3 className="text-xl font-semibold">
+                <EditableText
+                  value={story.title}
+                  onSave={async (title) => {
+                    await updateStoryText(story.id, { title, content: story.content });
+                    setStories((current) => current.map((item) => (item.id === story.id ? { ...item, title } : item)));
+                  }}
+                />
+              </h3>
               <p className="text-sm text-gray-600 mb-3">
                 {story.authorName} · {story.authorRelation}
               </p>
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{story.content}</p>
+              <EditableText
+                as="p"
+                block
+                multiline
+                className="text-gray-700 leading-relaxed whitespace-pre-wrap"
+                value={story.content}
+                onSave={async (content) => {
+                  await updateStoryText(story.id, { title: story.title, content });
+                  setStories((current) => current.map((item) => (item.id === story.id ? { ...item, content } : item)));
+                }}
+              />
             </div>
           </div>
         </article>

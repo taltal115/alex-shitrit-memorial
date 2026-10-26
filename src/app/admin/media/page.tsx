@@ -107,7 +107,10 @@ function MediaEditor() {
       }
       await refresh();
     } catch (uploadError) {
-      setError(storageErrorMessage(uploadError) ?? 'ההעלאה נכשלה');
+      setError(
+        storageErrorMessage(uploadError) ??
+          (uploadError instanceof Error ? uploadError.message : 'ההעלאה נכשלה')
+      );
     } finally {
       setBusy(false);
     }
