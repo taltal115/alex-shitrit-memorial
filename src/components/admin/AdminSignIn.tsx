@@ -10,6 +10,28 @@ interface AdminSignInProps {
   message: string;
 }
 
+function signInErrorMessage(error: unknown): string {
+  const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : '';
+  if (
+    code === 'auth/invalid-credential' ||
+    code === 'auth/wrong-password' ||
+    code === 'auth/user-not-found' ||
+    code === 'auth/invalid-email'
+  ) {
+    return 'הדוא״ל או הסיסמה שגויים';
+  }
+  if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+    return 'ההתחברות בוטלה';
+  }
+  if (code === 'auth/unauthorized-domain') {
+    return 'הדומיין הזה אינו מורשה להתחברות';
+  }
+  if (code === 'auth/too-many-requests') {
+    return 'יותר מדי ניסיונות. נסו שוב בעוד כמה דקות';
+  }
+  return 'ההתחברות נכשלה';
+}
+
 export default function AdminSignIn({ title, message }: AdminSignInProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,7 +45,7 @@ export default function AdminSignIn({ title, message }: AdminSignInProps) {
     try {
       await signInWithGoogle();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ההתחברות נכשלה');
+      setError(signInErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -36,7 +58,7 @@ export default function AdminSignIn({ title, message }: AdminSignInProps) {
     try {
       await signInWithEmail(email.trim(), password);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ההתחברות נכשלה');
+      setError(signInErrorMessage(err));
     } finally {
       setSubmitting(false);
     }

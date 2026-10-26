@@ -1,4 +1,18 @@
 {
+  "auth": {
+    "providers": {
+      "emailPassword": true,
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "אלכס שטרית",
+        "supportEmail": "taltal115@gmail.com",
+        "authorizedRedirectUris": [
+          "https://alex-shitrit-memorial.firebaseapp.com/__/auth/handler",
+          "https://alex-shitrit-memorial.web.app/__/auth/handler",
+          "http://localhost"
+        ]
+      }
+    }
+  },
   "hosting": {
     "public": "out",
     "cleanUrls": true,

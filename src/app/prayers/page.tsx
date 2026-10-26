@@ -1,6 +1,4 @@
-import Navigation from '@/components/Navigation';
-import Footer from '@/components/Footer';
-import PrayersContent from '@/components/PrayersContent';
+import RedirectSection from '@/components/RedirectSection';
 
 export const metadata = {
   title: 'תפילות ואזכרה - אלכס שטרית',
@@ -8,11 +6,5 @@ export const metadata = {
 };
 
 export default function PrayersPage() {
-  return (
-    <>
-      <Navigation />
-      <PrayersContent />
-      <Footer />
-    </>
-  );
+  return <RedirectSection id="prayers" />;
 }

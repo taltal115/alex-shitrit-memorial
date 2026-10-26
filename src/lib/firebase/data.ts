@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { sephardiPrayerSections } from '@/data/sephardi-prayers';
 import { getFirebaseAuth, getFirebaseDb } from '@/lib/firebase/client';
+import { writeAudit } from '@/lib/firebase/cms';
 
 export const MEMORIAL_DOC_ID = 'alex';
 
@@ -215,4 +216,18 @@ export async function updatePrayerVerification(
     verified_at: verified ? new Date().toISOString() : null,
     verified_by: verified ? user?.uid ?? null : null,
   });
+  await writeAudit('update_prayer', 'prayerSections', sectionId, newStatus);
+}
+
+export async function updatePrayerContent(
+  sectionId: string,
+  patch: { title: string; verses: string[] }
+): Promise<void> {
+  await seedBundledPrayersIfEmpty();
+  await updateDoc(doc(getFirebaseDb(), 'prayerSections', sectionId), {
+    title: patch.title,
+    verses: patch.verses,
+    hebrew_text: patch.verses.join('\n'),
+  });
+  await writeAudit('update_prayer', 'prayerSections', sectionId, patch.title);
 }

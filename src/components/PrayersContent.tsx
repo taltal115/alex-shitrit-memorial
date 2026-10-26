@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Plus, Minus, Calendar, Clock, AlertCircle } from 'lucide-react';
+import { CopyText, EditableText } from '@/components/edit/EditableText';
 import { sephardiPrayerSections } from '@/data/sephardi-prayers';
-import { listPrayerSections } from '@/lib/firebase/data';
+import { listPrayerSections, updatePrayerContent } from '@/lib/firebase/data';
 import { isFirebaseConfigured } from '@/lib/firebase/config';
 import { SHOW_PENDING_SECTIONS_PUBLICLY } from '@/config/prayers';
 
@@ -20,7 +21,8 @@ interface PrayerSection {
   is_verified: boolean;
 }
 
-export default function PrayersContent() {
+export default function PrayersContent({ embedded = false }: { embedded?: boolean }) {
+  const Root = embedded ? 'div' : 'main';
   const [prayerSections, setPrayerSections] = useState<PrayerSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -257,31 +259,31 @@ export default function PrayersContent() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-background">
+      <Root className="min-h-screen bg-background">
         <section className="py-12">
           <div className="container mx-auto px-4 text-center">
             <p className="text-xl">טוען תפילות...</p>
           </div>
         </section>
-      </main>
+      </Root>
     );
   }
 
   if (error) {
     return (
-      <main className="min-h-screen bg-background">
+      <Root className="min-h-screen bg-background">
         <section className="py-12">
           <div className="container mx-auto px-4 text-center">
             <p className="text-xl text-red-600">{error}</p>
           </div>
         </section>
-      </main>
+      </Root>
     );
   }
 
   if (prayerSections.length === 0) {
     return (
-      <main className="min-h-screen bg-background">
+      <Root className="min-h-screen bg-background">
         <section className="py-12">
           <div className="container mx-auto px-4">
             <div className="max-w-2xl mx-auto text-center">
@@ -297,22 +299,22 @@ export default function PrayersContent() {
             </div>
           </div>
         </section>
-      </main>
+      </Root>
     );
   }
 
   const currentPrayerSection = prayerSections[currentSection];
 
   return (
-    <main className="min-h-screen bg-background">
+    <Root className="min-h-screen bg-background">
       {/* Header */}
       <section className="bg-linen py-8 border-b-2 border-sand">
         <div className="container mx-auto px-4">
           <h1 className="text-3xl md:text-4xl font-bold text-center mb-4">
-            תפילות לעילוי נשמת
+            <CopyText id="prayers.heading" fallback="תפילות לעילוי נשמת" />
           </h1>
           <h2 className="text-2xl md:text-3xl text-center text-sand mb-6">
-            אלכס שטרית ז״ל
+            <CopyText id="prayers.name" fallback="אלכס שטרית ז״ל" />
           </h2>
 
           {/* Azkara Date Info */}
@@ -447,22 +449,59 @@ export default function PrayersContent() {
             {/* Prayer Text */}
             <div className="bg-white p-6 md:p-10 rounded-lg shadow-lg min-h-[400px]">
               <h2 className="text-2xl font-bold mb-6 text-center border-b-2 border-sand pb-4">
-                {currentPrayerSection.title}
+                <EditableText
+                  value={currentPrayerSection.title}
+                  onSave={async (title) => {
+                    const verses = currentPrayerSection.verses ?? [];
+                    await updatePrayerContent(currentPrayerSection.section_id || currentPrayerSection.id, {
+                      title,
+                      verses,
+                    });
+                    setPrayerSections((current) =>
+                      current.map((section, sectionIndex) =>
+                        sectionIndex === currentSection ? { ...section, title } : section
+                      )
+                    );
+                  }}
+                />
               </h2>
               
-              <div
-                className="leading-relaxed text-right"
-                style={{ fontSize: `${textSize}px` }}
-                dir="rtl"
+              <EditableText
+                block
+                multiline
+                value={(currentPrayerSection.verses && currentPrayerSection.verses.length > 0
+                  ? currentPrayerSection.verses
+                  : [currentPrayerSection.hebrew_text]
+                ).join('\n')}
+                onSave={async (text) => {
+                  const verses = text.split('\n');
+                  await updatePrayerContent(currentPrayerSection.section_id || currentPrayerSection.id, {
+                    title: currentPrayerSection.title,
+                    verses,
+                  });
+                  setPrayerSections((current) =>
+                    current.map((section, sectionIndex) =>
+                      sectionIndex === currentSection
+                        ? { ...section, verses, hebrew_text: text }
+                        : section
+                    )
+                  );
+                }}
               >
-                {currentPrayerSection.verses && currentPrayerSection.verses.length > 0 ? (
-                  currentPrayerSection.verses.map((verse, index) => renderVerse(verse, index, currentPrayerSection.verses || []))
-                ) : (
-                  <p className="text-gray-500 italic text-center">
-                    אין תוכן זמין לתפילה זו
-                  </p>
-                )}
-              </div>
+                <div
+                  className="leading-relaxed text-right"
+                  style={{ fontSize: `${textSize}px` }}
+                  dir="rtl"
+                >
+                  {currentPrayerSection.verses && currentPrayerSection.verses.length > 0 ? (
+                    currentPrayerSection.verses.map((verse, index) => renderVerse(verse, index, currentPrayerSection.verses || []))
+                  ) : (
+                    <p className="text-gray-500 italic text-center">
+                      אין תוכן זמין לתפילה זו
+                    </p>
+                  )}
+                </div>
+              </EditableText>
 
               {currentPrayerSection.notes && (
                 <div className="mt-8 pt-6 border-t border-sand/20">
@@ -563,6 +602,6 @@ export default function PrayersContent() {
           </div>
         </div>
       </section>
-    </main>
+    </Root>
   );
 }

@@ -16,6 +16,7 @@ interface UseAdminAuthResult {
   authorized: boolean;
   role: AdminRole | null;
   userId: string | null;
+  email: string | null;
   configured: boolean;
 }
 
@@ -24,6 +25,7 @@ export function useAdminAuth(requiredRole?: AdminRole): UseAdminAuthResult {
   const [authorized, setAuthorized] = useState(false);
   const [role, setRole] = useState<AdminRole | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null);
   const configured = isFirebaseConfigured();
 
   useEffect(() => {
@@ -31,6 +33,7 @@ export function useAdminAuth(requiredRole?: AdminRole): UseAdminAuthResult {
       setAuthorized(true);
       setRole('super_admin');
       setUserId(null);
+      setEmail(null);
       setLoading(false);
       return;
     }
@@ -40,6 +43,7 @@ export function useAdminAuth(requiredRole?: AdminRole): UseAdminAuthResult {
         setAuthorized(false);
         setRole(null);
         setUserId(null);
+        setEmail(null);
         setLoading(false);
         return;
       }
@@ -47,6 +51,7 @@ export function useAdminAuth(requiredRole?: AdminRole): UseAdminAuthResult {
       try {
         const userRole = await resolveAdminRole(user);
         setUserId(user.uid);
+        setEmail(user.email);
 
         if (!userRole || (requiredRole === 'super_admin' && userRole !== 'super_admin')) {
           setRole(userRole);
@@ -68,5 +73,5 @@ export function useAdminAuth(requiredRole?: AdminRole): UseAdminAuthResult {
     return unsubscribe;
   }, [configured, requiredRole]);
 
-  return { loading, authorized, role, userId, configured };
+  return { loading, authorized, role, userId, email, configured };
 }
