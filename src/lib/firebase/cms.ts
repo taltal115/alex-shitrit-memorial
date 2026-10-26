@@ -334,6 +334,11 @@ async function compressImageFile(file: File): Promise<string> {
 
 async function storeImageFile(file: File, pathPrefix: string): Promise<{ url: string; storagePath: string }> {
   const contentType = imageContentType(file);
+  if (!contentType.startsWith('video/')) {
+    const url = await compressImageFile(file);
+    return { url, storagePath: '' };
+  }
+
   const id = crypto.randomUUID();
   const storagePath = `media/${pathPrefix}/${id}`;
   try {
@@ -341,13 +346,8 @@ async function storeImageFile(file: File, pathPrefix: string): Promise<{ url: st
     await withTimeout(uploadBytes(storageRef, file, { contentType }), 12000);
     const url = await getDownloadURL(storageRef);
     return { url, storagePath };
-  } catch (error) {
-    if (contentType.startsWith('video/')) {
-      throw new Error('העלאת סרטונים דורשת Firebase Storage. בקונסול Firebase פתחו Storage ולחצו Get Started.');
-    }
-    console.error('storage upload failed, saving a compressed copy', error);
-    const url = await compressImageFile(file);
-    return { url, storagePath: '' };
+  } catch {
+    throw new Error('העלאת סרטונים דורשת Firebase Storage. בקונסול Firebase פתחו Storage ולחצו Get Started.');
   }
 }
 

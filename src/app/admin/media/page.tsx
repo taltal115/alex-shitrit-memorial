@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import AdminShell from '@/components/admin/AdminShell';
+import UploadIndicator from '@/components/admin/UploadIndicator';
 import {
+  HOME_CAROUSEL_ALBUM,
   defaultAlbums,
   deleteAlbum,
   deleteMedia,
@@ -23,11 +25,12 @@ const inputClass =
 function MediaEditor() {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [media, setMedia] = useState<MediaAsset[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(HOME_CAROUSEL_ALBUM);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadLabel, setUploadLabel] = useState<string | null>(null);
 
   async function refresh() {
     const [nextAlbums, nextMedia] = await Promise.all([listAlbums(), listMedia()]);
@@ -86,7 +89,7 @@ function MediaEditor() {
     setBusy(true);
     try {
       await deleteAlbum(id);
-      if (selectedId === id) setSelectedId(null);
+      if (selectedId === id) setSelectedId(HOME_CAROUSEL_ALBUM);
       await refresh();
     } catch {
       setError('מחיקת האלבום נכשלה');
@@ -102,8 +105,9 @@ function MediaEditor() {
     setBusy(true);
     setError(null);
     try {
-      for (const file of files) {
-        await uploadMediaFile(selectedId, file);
+      for (let index = 0; index < files.length; index += 1) {
+        setUploadLabel(files.length > 1 ? `מעלה תמונה ${index + 1} מתוך ${files.length}` : 'מעלה את התמונה...');
+        await uploadMediaFile(selectedId, files[index]);
       }
       await refresh();
     } catch (uploadError) {
@@ -111,6 +115,22 @@ function MediaEditor() {
         storageErrorMessage(uploadError) ??
           (uploadError instanceof Error ? uploadError.message : 'ההעלאה נכשלה')
       );
+    } finally {
+      setUploadLabel(null);
+      setBusy(false);
+    }
+  }
+
+  async function moveMedia(asset: MediaAsset, albumId: string) {
+    if (albumId === asset.albumId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await updateMedia({ ...asset, albumId });
+      setSelectedId(albumId);
+      await refresh();
+    } catch {
+      setError('העברת התמונה נכשלה');
     } finally {
       setBusy(false);
     }
@@ -135,7 +155,12 @@ function MediaEditor() {
     }
   }
 
+  const places = [
+    { id: HOME_CAROUSEL_ALBUM, title: 'התמונה הראשית בבית' },
+    ...albums.map((album) => ({ id: album.id, title: album.title })),
+  ];
   const selectedMedia = media.filter((item) => item.albumId === selectedId);
+  const selectedIsHome = selectedId === HOME_CAROUSEL_ALBUM;
 
   return (
     <div className="space-y-8">
@@ -158,6 +183,13 @@ function MediaEditor() {
       {error && <p className="text-red-700">{error}</p>}
 
       <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setSelectedId(HOME_CAROUSEL_ALBUM)}
+          className={`px-4 py-2 rounded-lg ${selectedIsHome ? 'bg-sand text-white' : 'bg-linen'}`}
+        >
+          התמונה הראשית בבית
+        </button>
         {albums.map((album) => (
           <button
             key={album.id}
@@ -173,15 +205,20 @@ function MediaEditor() {
       {selectedId && (
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <label className="bg-sand text-white px-5 py-2 rounded-lg cursor-pointer">
-              העלאת תמונות או סרטונים
+            <label className={`bg-sand text-white px-5 py-2 rounded-lg ${busy ? 'cursor-wait opacity-70' : 'cursor-pointer'}`}>
+              {uploadLabel ?? (selectedIsHome ? 'העלאה לתמונה הראשית' : 'העלאת תמונות או סרטונים')}
               <input type="file" accept="image/*,video/*" multiple className="hidden" onChange={onUpload} disabled={busy} />
             </label>
-            <button type="button" onClick={() => removeAlbum(selectedId)} className="text-red-700">
-              מחיקת האלבום
-            </button>
+            {!selectedIsHome && (
+              <button type="button" onClick={() => removeAlbum(selectedId)} className="text-red-700" disabled={busy}>
+                מחיקת האלבום
+              </button>
+            )}
           </div>
-          {selectedMedia.length === 0 && <p className="text-gray-600">אין קבצים באלבום הזה.</p>}
+          {uploadLabel && <UploadIndicator label={uploadLabel} />}
+          {selectedMedia.length === 0 && !uploadLabel && (
+            <p className="text-gray-600">{selectedIsHome ? 'אין תמונות במסך הבית.' : 'אין תמונות במיקום הזה.'}</p>
+          )}
           <div className="grid sm:grid-cols-2 gap-4">
             {selectedMedia.map((asset) => (
               <figure key={asset.id} className="bg-linen rounded-lg overflow-hidden">
@@ -191,6 +228,21 @@ function MediaEditor() {
                   <img src={asset.url} alt={asset.caption || 'תמונה מהגלריה'} className="w-full aspect-video object-cover" />
                 )}
                 <figcaption className="p-3 space-y-2">
+                  <label className="block text-sm">
+                    מיקום באתר
+                    <select
+                      value={places.some((place) => place.id === asset.albumId) ? asset.albumId : selectedId}
+                      onChange={(event) => moveMedia(asset, event.target.value)}
+                      disabled={busy}
+                      className={`${inputClass} mt-1`}
+                    >
+                      {places.map((place) => (
+                        <option key={place.id} value={place.id}>
+                          {place.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   <input
                     defaultValue={asset.caption}
                     onBlur={(event) => {
@@ -199,7 +251,7 @@ function MediaEditor() {
                     placeholder="כיתוב"
                     className={inputClass}
                   />
-                  <button type="button" onClick={() => removeMedia(asset)} className="text-sm text-red-700">
+                  <button type="button" onClick={() => removeMedia(asset)} className="text-sm text-red-700" disabled={busy}>
                     מחיקה
                   </button>
                 </figcaption>

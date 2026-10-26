@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import AdminShell from '@/components/admin/AdminShell';
+import UploadIndicator from '@/components/admin/UploadIndicator';
 import {
   defaultHome,
   defaultLegacySections,
@@ -36,6 +37,7 @@ function ContentEditor() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [uploadingPortrait, setUploadingPortrait] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -76,7 +78,7 @@ function ContentEditor() {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    setBusy(true);
+    setUploadingPortrait(true);
     setError(null);
     try {
       const portraitUrl = await uploadPortrait(file);
@@ -85,9 +87,12 @@ function ContentEditor() {
       await saveHome(next);
       setMessage('תמונת הפורטרט נשמרה');
     } catch (uploadError) {
-      setError(storageErrorMessage(uploadError) ?? 'העלאת התמונה נכשלה');
+      setError(
+        storageErrorMessage(uploadError) ??
+          (uploadError instanceof Error ? uploadError.message : 'העלאת התמונה נכשלה')
+      );
     } finally {
-      setBusy(false);
+      setUploadingPortrait(false);
     }
   }
 
@@ -167,8 +172,9 @@ function ContentEditor() {
         )}
         <label className="block text-sm">
           העלאת פורטרט
-          <input type="file" accept="image/*" onChange={onPortrait} className="block mt-2" />
+          <input type="file" accept="image/*" onChange={onPortrait} disabled={uploadingPortrait} className="block mt-2" />
         </label>
+        {uploadingPortrait && <UploadIndicator label="מעלה את התמונה..." />}
         <label className="block">
           <span className="block text-sm font-medium mb-2">ציטוט</span>
           <textarea rows={3} value={home.quote} onChange={(event) => setHome({ ...home, quote: event.target.value })} className={inputClass} />

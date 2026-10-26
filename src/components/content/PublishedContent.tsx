@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BookOpen, ChevronLeft, ChevronRight, Heart, ImageIcon, Lightbulb, MessageCircle, User } from 'lucide-react';
+import UploadIndicator from '@/components/admin/UploadIndicator';
 import { EditableText, useIsAdmin } from '@/components/edit/EditableText';
 import {
   HOME_CAROUSEL_ALBUM,
@@ -120,6 +121,7 @@ export function HomeCarousel() {
   return (
     <div className="w-full max-w-xl">
       <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-sand/20 shadow-lg">
+        {busy && <UploadIndicator overlay label="מעלה את התמונה..." />}
         {slide ? (
           <img src={slide.url} alt={slide.caption || 'תמונה ראשית'} className="h-full w-full object-cover" />
         ) : (
